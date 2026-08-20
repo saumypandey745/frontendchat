@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Settings, Sun, Moon, Monitor, LogOut, ChevronDown, Star } from 'lucide-react';
+import { User, Settings, Sun, Moon, Monitor, LogOut, Star } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 import useTheme from '../hooks/useTheme';
 import EditProfileModal from './EditProfileModal';
@@ -14,7 +14,7 @@ const ProfileMenu = () => {
   const { theme, setTheme } = useTheme();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, openUpward: false });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isStarredModalOpen, setIsStarredModalOpen] = useState(false);
@@ -22,15 +22,37 @@ const ProfileMenu = () => {
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
 
-  // Compute dropdown position from trigger button's bounding rect
+  // Estimated dropdown height (header + 3 actions + theme switcher + logout + padding)
+  const DROPDOWN_HEIGHT = 320;
+  const DROPDOWN_WIDTH = 288; // w-72
+  const GAP = 8;
+
+  // Compute dropdown position — flip upward if not enough space below
   const openMenu = () => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      // Open to the right of the NavRail trigger button
-      setMenuPos({
-        top: rect.top,
-        left: rect.right + 8, // 8px gap from NavRail edge
-      });
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      // Horizontal: place to the right of NavRail, clamp so it doesn't overflow right edge
+      const leftIdeal = rect.right + GAP;
+      const left = Math.min(leftIdeal, vw - DROPDOWN_WIDTH - GAP);
+
+      // Vertical: open downward by default, flip upward if not enough space below
+      const spaceBelow = vh - rect.top;
+      let top;
+      let openUpward = false;
+
+      if (spaceBelow >= DROPDOWN_HEIGHT + GAP) {
+        // Enough room below → align top of dropdown with top of trigger
+        top = rect.top;
+      } else {
+        // Not enough room below → open upward, align bottom of dropdown with bottom of trigger
+        top = Math.max(GAP, rect.bottom - DROPDOWN_HEIGHT);
+        openUpward = true;
+      }
+
+      setMenuPos({ top, left, openUpward });
     }
     setIsOpen(true);
   };
@@ -73,8 +95,9 @@ const ProfileMenu = () => {
             top: menuPos.top,
             left: menuPos.left,
             zIndex: 9999,
+            maxHeight: `calc(100vh - ${menuPos.top}px - 8px)`,
           }}
-          className="w-72 glass-dropdown rounded-2xl shadow-2xl py-2 animate-fade-in divide-y divide-slate-100 dark:divide-slate-800"
+          className="w-72 glass-dropdown rounded-2xl shadow-2xl py-2 animate-fade-in divide-y divide-slate-100 dark:divide-slate-800 overflow-y-auto"
         >
           {/* User Header */}
           <div className="px-4 py-3 flex items-center gap-3">
