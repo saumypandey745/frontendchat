@@ -474,14 +474,14 @@ const ChatWindow = ({ onBackMobile }) => {
 
       {/* Attachment Options Popover */}
       {showAttachMenu && (
-        <div className="absolute bottom-20 left-12 z-30 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-2 shadow-glass-lg animate-pop-in flex flex-col space-y-1 w-52">
+        <div className="absolute bottom-20 left-4 sm:left-12 z-30 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-2 shadow-glass-lg animate-pop-in flex flex-col space-y-1 w-52 max-w-[calc(100vw-2rem)]">
           <button
             type="button"
             onClick={() => {
               setShowAttachMenu(false);
               fileInputRef.current?.click();
             }}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors min-h-[44px]"
           >
             <div className="p-2 bg-blue-500/10 text-blue-500 rounded-xl">
               <User className="w-4 h-4" />
@@ -495,7 +495,7 @@ const ChatWindow = ({ onBackMobile }) => {
               setShowAttachMenu(false);
               docInputRef.current?.click();
             }}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors min-h-[44px]"
           >
             <div className="p-2 bg-purple-500/10 text-purple-500 rounded-xl">
               <FileText className="w-4 h-4" />
@@ -509,7 +509,7 @@ const ChatWindow = ({ onBackMobile }) => {
               setShowAttachMenu(false);
               setIsLocationModalOpen(true);
             }}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors min-h-[44px]"
           >
             <div className="p-2 bg-red-500/10 text-red-500 rounded-xl">
               <MapPin className="w-4 h-4" />
@@ -523,7 +523,7 @@ const ChatWindow = ({ onBackMobile }) => {
               setShowAttachMenu(false);
               setIsContactModalOpen(true);
             }}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors min-h-[44px]"
           >
             <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl">
               <User className="w-4 h-4" />
@@ -535,10 +535,11 @@ const ChatWindow = ({ onBackMobile }) => {
 
       {/* Emoji Picker Popover */}
       {showEmojiPicker && (
-        <div className="absolute bottom-20 left-4 z-30 shadow-glass-lg rounded-3xl animate-pop-in">
+        <div className="absolute bottom-20 left-2 sm:left-4 z-30 shadow-glass-lg rounded-3xl animate-pop-in max-w-[calc(100vw-1rem)] overflow-hidden">
           <EmojiPicker
             onEmojiClick={(eData) => setText((prev) => prev + eData.emoji)}
             theme={theme === 'dark' ? 'dark' : 'light'}
+            width="320px"
           />
         </div>
       )}
@@ -547,7 +548,13 @@ const ChatWindow = ({ onBackMobile }) => {
       <ForwardModal isOpen={!!forwardMessageId} onClose={() => setForwardMessageId(null)} messageId={forwardMessageId} />
       <LocationPickerModal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} onSendLocation={(loc) => sendMessage({ type: 'location', locationData: loc, text: `📍 ${loc.address}` })} />
       <ContactShareModal isOpen={isContactModalOpen} onClose={() => setIsContactModalOpen(false)} onSendContact={(c) => sendMessage({ type: 'contact', contactData: c, text: `📇 ${c.name}` })} />
-      <GroupInfoPanel isOpen={isGroupInfoOpen} onClose={() => setIsGroupInfoOpen(false)} group={selectedGroup} />
+      <GroupInfoPanel
+        isOpen={isGroupInfoOpen}
+        onClose={() => setIsGroupInfoOpen(false)}
+        group={selectedGroup}
+        onOpenGallery={() => setIsGalleryOpen(true)}
+        onOpenWallpaper={() => setIsWallpaperModalOpen(true)}
+      />
       <ContactInfoPanel
         isOpen={isContactInfoOpen}
         onClose={() => setIsContactInfoOpen(false)}

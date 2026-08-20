@@ -352,12 +352,19 @@ export const ChatProvider = ({ children }) => {
           return [...prev, newMsg];
         });
       } else if (msgSenderId !== currentUserId) {
-        // Only toast for messages FROM someone else (never for our own sent messages)
-        setToastNotification({
-          id: Date.now(),
-          senderId: msgSenderId,
-          text: newMsg.text || '📷 Sent an attachment',
-        });
+        // Check if this chat is muted before showing toast
+        const targetChatId = newMsg.isGroup ? newMsg.chatId : msgSenderId;
+        const targetSettings = chatSettings[targetChatId];
+        const isMuted = targetSettings?.muted && (!targetSettings?.mutedUntil || new Date(targetSettings.mutedUntil) > new Date());
+
+        if (!isMuted) {
+          // Only toast for messages FROM someone else (never for our own sent messages or muted chats)
+          setToastNotification({
+            id: Date.now(),
+            senderId: msgSenderId,
+            text: newMsg.text || '📷 Sent an attachment',
+          });
+        }
       }
 
       fetchContacts();
@@ -369,20 +376,43 @@ export const ChatProvider = ({ children }) => {
       );
     };
 
-    const handleGroupUpdated = () => {
+    const handleGroupUpdated = (updatedGroup) => {
       fetchContacts();
+      if (selectedGroup && (updatedGroup?._id === selectedGroup._id || updatedGroup?.id === selectedGroup._id)) {
+        setSelectedGroup(updatedGroup);
+      }
+    };
+
+    const handleRemovedFromGroup = ({ groupId }) => {
+      fetchContacts();
+      if (selectedGroup && selectedGroup._id === groupId) {
+        setSelectedGroup(null);
+        setMessages([]);
+      }
+    };
+
+    const handleGroupDeleted = ({ groupId }) => {
+      fetchContacts();
+      if (selectedGroup && selectedGroup._id === groupId) {
+        setSelectedGroup(null);
+        setMessages([]);
+      }
     };
 
     socket.on('newMessage', handleNewMessage);
     socket.on('messageReaction', handleReaction);
     socket.on('groupUpdated', handleGroupUpdated);
+    socket.on('removedFromGroup', handleRemovedFromGroup);
+    socket.on('groupDeleted', handleGroupDeleted);
 
     return () => {
       socket.off('newMessage', handleNewMessage);
       socket.off('messageReaction', handleReaction);
       socket.off('groupUpdated', handleGroupUpdated);
+      socket.off('removedFromGroup', handleRemovedFromGroup);
+      socket.off('groupDeleted', handleGroupDeleted);
     };
-  }, [socket, activeChatId, isGroupActive, fetchContacts, user]);
+  }, [socket, activeChatId, isGroupActive, fetchContacts, user, chatSettings, selectedGroup]);
 
   return (
     <ChatContext.Provider

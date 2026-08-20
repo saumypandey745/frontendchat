@@ -34,16 +34,22 @@ const ContactInfoPanel = ({
   const { messages, chatSettings, updateChatSetting, fetchContacts } = useChat();
 
   const [loadingBlock, setLoadingBlock] = useState(false);
+  const [loadingReport, setLoadingReport] = useState(false);
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
 
   if (!isOpen || !contact) return null;
 
-  const isBlocked = user?.blockedUsers?.some(
+  const isBlocked = (user?.blockedUsers || []).some(
     (b) => (b._id || b).toString() === contact._id.toString()
   );
 
   const currentSettings = chatSettings[contact._id] || {};
-  const isMuted = currentSettings.muted;
+  const isMuted = Boolean(
+    currentSettings.muted &&
+      (!currentSettings.mutedUntil || new Date(currentSettings.mutedUntil) > new Date())
+  );
+
+  const muteOption = currentSettings.muteOption || (isMuted ? (currentSettings.mutedUntil ? '8h' : 'always') : 'off');
   const disappearingTimer = currentSettings.disappearingDuration || 0;
 
   // Filter media messages for count
@@ -57,7 +63,6 @@ const ContactInfoPanel = ({
       const endpoint = isBlocked ? `/users/${contact._id}/unblock` : `/users/${contact._id}/block`;
       const res = await api.post(endpoint);
       if (res.data.success) {
-        // Update user state locally so blockedUsers array reflects change immediately
         if (user) {
           const updatedBlocked = res.data.blockedUsers || [];
           setUser({ ...user, blockedUsers: updatedBlocked });
@@ -75,7 +80,7 @@ const ContactInfoPanel = ({
 
   const handleMuteToggle = async (hours) => {
     if (hours === 0) {
-      await updateChatSetting(contact._id, { muted: false });
+      await updateChatSetting(contact._id, { muted: false, muteHours: 0 });
     } else {
       await updateChatSetting(contact._id, { muted: true, muteHours: hours });
     }
@@ -91,21 +96,42 @@ const ContactInfoPanel = ({
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/json' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `ChatWave_Backup_${contact.name.replace(/\s+/g, '_')}.json`);
+      link.setAttribute('download', `ChatWave_Export_${contact.name.replace(/\s+/g, '_')}.json`);
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (err) {
-      alert('Failed to export chat backup.');
+      alert('Failed to export chat history.');
     }
   };
 
-  const handleReport = () => {
-    alert(`Report submitted for ${contact.name}. Thank you for keeping ChatWave safe.`);
+  const handleReport = async () => {
+    setLoadingReport(true);
+    try {
+      const res = await api.post(`/users/${contact._id}/report`, {
+        reason: 'Reported contact from Contact Info panel',
+      });
+      if (res.data.success) {
+        alert(`Report submitted for ${contact.name}. Thank you for keeping ChatWave safe.`);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit report.');
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
+  const isMuteOptionActive = (optHours) => {
+    if (optHours === 0) return !isMuted;
+    if (!isMuted) return false;
+    if (optHours === 8) return muteOption === '8h';
+    if (optHours === 168) return muteOption === '1w';
+    if (optHours === 87600) return muteOption === 'always';
+    return false;
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 w-full sm:w-96 glass-modal rounded-none border-l border-slate-200/80 dark:border-slate-800/80 shadow-glass-lg flex flex-col animate-slide-up overflow-hidden">
+    <div className="fixed inset-y-0 right-0 z-40 w-full sm:w-96 glass-modal rounded-none border-l border-slate-200/80 dark:border-slate-800/80 shadow-glass-lg flex flex-col animate-slide-up overflow-hidden safe-pt safe-pb">
       {/* Header */}
       <div className="p-4 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
         <h3 className="font-bold text-slate-900 dark:text-slate-100">Contact Info</h3>
@@ -179,7 +205,7 @@ const ContactInfoPanel = ({
                 <span>Mute Notifications</span>
               </div>
               <span className="text-[10px] text-brand-600 dark:text-brand-400 font-bold">
-                {isMuted ? 'Muted' : 'Off'}
+                {isMuted ? (muteOption === '8h' ? '8 Hours' : muteOption === '1w' ? '1 Week' : 'Always') : 'Off'}
               </span>
             </div>
             <div className="grid grid-cols-4 gap-1 pt-1">
@@ -188,19 +214,22 @@ const ContactInfoPanel = ({
                 { label: '8 Hours', hours: 8 },
                 { label: '1 Week', hours: 168 },
                 { label: 'Always', hours: 87600 },
-              ].map((opt) => (
-                <button
-                  key={opt.label}
-                  onClick={() => handleMuteToggle(opt.hours)}
-                  className={`py-1 px-2 text-[10px] font-bold rounded-lg transition-all ${
-                    (isMuted && opt.hours > 0) || (!isMuted && opt.hours === 0)
-                      ? 'bg-brand-600 text-white shadow-sm'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              ].map((opt) => {
+                const active = isMuteOptionActive(opt.hours);
+                return (
+                  <button
+                    key={opt.label}
+                    onClick={() => handleMuteToggle(opt.hours)}
+                    className={`py-1 px-2 text-[10px] font-bold rounded-lg transition-all ${
+                      active
+                        ? 'bg-brand-600 text-white shadow-sm'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -277,12 +306,13 @@ const ContactInfoPanel = ({
           {/* Report Contact */}
           <button
             onClick={handleReport}
+            disabled={loadingReport}
             className="w-full py-2.5 px-4 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold transition-colors"
           >
             <Flag className="w-4 h-4 text-amber-500" /> Report Contact
           </button>
 
-          {/* Export Chat */}
+          {/* Export Chat Backup */}
           <button
             onClick={handleExportChat}
             className="w-full py-2.5 px-4 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold transition-colors"

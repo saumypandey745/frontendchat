@@ -22,18 +22,36 @@ export const CallProvider = ({ children }) => {
 
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+  const [incomingCamStream, setIncomingCamStream] = useState(null);
+
   const [isMuted, setIsMuted] = useState(false);
   const [isCamOff, setIsCamOff] = useState(false);
+  const [remoteMuted, setRemoteMuted] = useState(false);
+  const [remoteCamOff, setRemoteCamOff] = useState(false);
+
   const [facingMode, setFacingMode] = useState('user');
   const [callDuration, setCallDuration] = useState(0);
+
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [isSpeakerOn, setIsSpeakerOn] = useState(false);
+  const [permissionError, setPermissionError] = useState(null);
+  const [callEndReason, setCallEndReason] = useState(null); // 'busy' | 'no_answer' | 'declined' | 'disconnected'
 
   const peerRef = useRef(null);
   const pendingOfferRef = useRef(null);
   const timerRef = useRef(null);
+  const ringTimeoutRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
   const localStreamRef = useRef(null);
+  const incomingCamStreamRef = useRef(null);
 
   // Clean up WebRTC peer & streams
-  const cleanupCall = () => {
+  const cleanupCall = (reason = null) => {
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+    if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
+
     if (peerRef.current) {
       peerRef.current.close();
       peerRef.current = null;
@@ -46,14 +64,32 @@ export const CallProvider = ({ children }) => {
       localStream.getTracks().forEach((track) => track.stop());
       setLocalStream(null);
     }
+    if (incomingCamStreamRef.current) {
+      incomingCamStreamRef.current.getTracks().forEach((track) => track.stop());
+      incomingCamStreamRef.current = null;
+    }
+    if (incomingCamStream) {
+      incomingCamStream.getTracks().forEach((track) => track.stop());
+      setIncomingCamStream(null);
+    }
+
     setRemoteStream(null);
     setCallState('idle');
     setRemoteUser(null);
     setIsMuted(false);
     setIsCamOff(false);
+    setRemoteMuted(false);
+    setRemoteCamOff(false);
     setFacingMode('user');
     setCallDuration(0);
-    if (timerRef.current) clearInterval(timerRef.current);
+    setIsMinimized(false);
+    setIsReconnecting(false);
+    setIsSpeakerOn(false);
+
+    if (reason) {
+      setCallEndReason(reason);
+      setTimeout(() => setCallEndReason(null), 4000);
+    }
   };
 
   // Start Call Duration Timer
@@ -80,9 +116,42 @@ export const CallProvider = ({ children }) => {
 
     pc.ontrack = (event) => {
       if (event.streams && event.streams[0]) {
-        // Construct a fresh MediaStream from tracks so React state reference updates
         const stream = new MediaStream(event.streams[0].getTracks());
         setRemoteStream(stream);
+      }
+    };
+
+    // Reconnection & ICE Restart handling
+    pc.onconnectionstatechange = () => {
+      console.log(`[WebRTC Connection State]: ${pc.connectionState}`);
+      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+        setIsReconnecting(true);
+
+        // Attempt ICE restart
+        if (pc.restartIce) {
+          pc.restartIce();
+        } else {
+          pc.createOffer({ iceRestart: true }).then((offer) => {
+            pc.setLocalDescription(offer);
+            socket?.emit('call-offer', { toUserId: targetUserId, offer, callType, isIceRestart: true });
+          }).catch((err) => console.error('ICE restart offer error:', err));
+        }
+
+        // Start 15-second grace window timer
+        if (!reconnectTimerRef.current) {
+          reconnectTimerRef.current = setTimeout(() => {
+            if (peerRef.current && peerRef.current.connectionState !== 'connected') {
+              console.log('Reconnection failed after 15s timeout.');
+              cleanupCall('disconnected');
+            }
+          }, 15000);
+        }
+      } else if (pc.connectionState === 'connected') {
+        setIsReconnecting(false);
+        if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+        }
       }
     };
 
@@ -96,6 +165,7 @@ export const CallProvider = ({ children }) => {
     setCallType(type);
     setRemoteUser(targetUser);
     setCallState('calling');
+    setPermissionError(null);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -116,9 +186,31 @@ export const CallProvider = ({ children }) => {
         offer,
         callType: type,
       });
+
+      // 30-Second Ringing Timeout (No answer)
+      if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
+      ringTimeoutRef.current = setTimeout(() => {
+        if (callState === 'calling') {
+          socket.emit('call-end', { toUserId: targetUser._id, duration: 0 });
+          api.post('/calls', {
+            receiverId: targetUser._id,
+            type,
+            status: 'missed',
+            duration: 0,
+          });
+          cleanupCall('no_answer');
+        }
+      }, 30000);
     } catch (err) {
       console.error('Failed to get media devices for call:', err);
-      alert(`Could not access ${type === 'video' ? 'camera/microphone' : 'microphone'}. Please check permissions.`);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setPermissionError({
+          type: type === 'video' ? 'camera/microphone' : 'microphone',
+          message: `Browser permission to access your ${type === 'video' ? 'camera and microphone' : 'microphone'} was denied. Please allow access in browser site settings.`,
+        });
+      } else {
+        alert(`Could not access ${type === 'video' ? 'camera/microphone' : 'microphone'}. Ensure devices are connected.`);
+      }
       cleanupCall();
     }
   };
@@ -128,6 +220,14 @@ export const CallProvider = ({ children }) => {
     if (!socket || !remoteUser || !pendingOfferRef.current) return;
     const { offer, callType: cType } = pendingOfferRef.current;
     setCallType(cType);
+    setPermissionError(null);
+
+    // Stop incoming preview stream before acquiring main stream
+    if (incomingCamStreamRef.current) {
+      incomingCamStreamRef.current.getTracks().forEach((t) => t.stop());
+      incomingCamStreamRef.current = null;
+      setIncomingCamStream(null);
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -153,16 +253,22 @@ export const CallProvider = ({ children }) => {
       startTimer();
     } catch (err) {
       console.error('Error accepting call:', err);
-      alert('Could not access media devices to answer the call.');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setPermissionError({
+          type: cType === 'video' ? 'camera/microphone' : 'microphone',
+          message: `Browser permission to access your ${cType === 'video' ? 'camera and microphone' : 'microphone'} was denied. Please allow access in browser site settings.`,
+        });
+      } else {
+        alert('Could not access media devices to answer the call.');
+      }
       cleanupCall();
     }
   };
 
   // Decline Incoming Call
-  const declineCall = () => {
+  const declineCall = (reason = 'declined') => {
     if (socket && remoteUser) {
-      socket.emit('call-decline', { toUserId: remoteUser._id });
-      // Log missed/declined call in DB
+      socket.emit('call-decline', { toUserId: remoteUser._id, reason });
       api.post('/calls', {
         receiverId: remoteUser._id,
         type: callType,
@@ -170,7 +276,7 @@ export const CallProvider = ({ children }) => {
         duration: 0,
       });
     }
-    cleanupCall();
+    cleanupCall(reason);
   };
 
   // End Call
@@ -180,7 +286,6 @@ export const CallProvider = ({ children }) => {
         toUserId: remoteUser._id,
         duration: callDuration,
       });
-      // Log call entry in DB
       api.post('/calls', {
         receiverId: remoteUser._id,
         type: callType,
@@ -198,7 +303,16 @@ export const CallProvider = ({ children }) => {
       const audioTrack = activeStream.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
-        setIsMuted(!audioTrack.enabled);
+        const newMutedState = !audioTrack.enabled;
+        setIsMuted(newMutedState);
+
+        if (socket && remoteUser) {
+          socket.emit('media-state-change', {
+            toUserId: remoteUser._id,
+            isMuted: newMutedState,
+            isCamOff,
+          });
+        }
       }
     }
   };
@@ -210,7 +324,16 @@ export const CallProvider = ({ children }) => {
       const videoTrack = activeStream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
-        setIsCamOff(!videoTrack.enabled);
+        const newCamState = !videoTrack.enabled;
+        setIsCamOff(newCamState);
+
+        if (socket && remoteUser) {
+          socket.emit('media-state-change', {
+            toUserId: remoteUser._id,
+            isMuted,
+            isCamOff: newCamState,
+          });
+        }
       }
     }
   };
@@ -222,7 +345,7 @@ export const CallProvider = ({ children }) => {
 
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({
-        audio: !isMuted,
+        audio: false,
         video: { facingMode: nextFacingMode },
       });
 
@@ -236,6 +359,7 @@ export const CallProvider = ({ children }) => {
           activeStream.removeTrack(oldVideoTrack);
         }
         if (newVideoTrack) {
+          newVideoTrack.enabled = !isCamOff;
           activeStream.addTrack(newVideoTrack);
         }
         localStreamRef.current = activeStream;
@@ -257,24 +381,65 @@ export const CallProvider = ({ children }) => {
     }
   };
 
+  // Speaker Output Toggle (HTML5 setSinkId)
+  const toggleSpeaker = async (mediaRef) => {
+    if (!mediaRef?.current) return;
+    try {
+      if (typeof mediaRef.current.setSinkId === 'function') {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioOutputs = devices.filter((d) => d.kind === 'audiooutput');
+        if (audioOutputs.length > 1) {
+          const nextDevice = audioOutputs[isSpeakerOn ? 0 : 1];
+          await mediaRef.current.setSinkId(nextDevice.deviceId);
+        }
+      }
+      setIsSpeakerOn(!isSpeakerOn);
+    } catch (e) {
+      console.error('Error toggling speaker sink:', e);
+      setIsSpeakerOn(!isSpeakerOn);
+    }
+  };
+
+  // Minimize / Maximize call
+  const minimizeCall = () => setIsMinimized(true);
+  const maximizeCall = () => setIsMinimized(false);
+
+  // Clear permission error
+  const clearPermissionError = () => setPermissionError(null);
+
   // Socket Signaling Event Listeners
   useEffect(() => {
     if (!socket) return;
 
-    const handleIncomingOffer = ({ fromUser, offer, callType }) => {
+    const handleIncomingOffer = async ({ fromUser, offer, callType: cType }) => {
+      // Busy check: recipient already on a call
       if (callState !== 'idle') {
-        // Busy - decline automatically
-        socket.emit('call-decline', { toUserId: fromUser._id });
+        socket.emit('call-decline', { toUserId: fromUser._id, reason: 'busy' });
         return;
       }
 
       setRemoteUser(fromUser);
-      setCallType(callType);
+      setCallType(cType);
       setCallState('incoming');
-      pendingOfferRef.current = { offer, callType };
+      pendingOfferRef.current = { offer, callType: cType };
+
+      // Optional incoming video self-preview before accept (non-blocking)
+      if (cType === 'video') {
+        try {
+          const previewStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user' },
+            audio: false,
+          });
+          incomingCamStreamRef.current = previewStream;
+          setIncomingCamStream(previewStream);
+        } catch (e) {
+          // Ignore preview permission errors prior to accept
+        }
+      }
     };
 
     const handleCallAnswered = async ({ answer }) => {
+      if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
       if (peerRef.current) {
         await peerRef.current.setRemoteDescription(new RTCSessionDescription(answer));
         setCallState('connected');
@@ -292,13 +457,18 @@ export const CallProvider = ({ children }) => {
       }
     };
 
-    const handleCallDeclined = () => {
-      alert(`${remoteUser?.name || 'User'} declined the call.`);
-      cleanupCall();
+    const handleCallDeclined = ({ reason } = {}) => {
+      const declReason = reason === 'busy' ? 'busy' : 'declined';
+      cleanupCall(declReason);
     };
 
     const handleCallEnded = () => {
       cleanupCall();
+    };
+
+    const handleMediaStateChange = ({ isMuted: rMuted, isCamOff: rCamOff }) => {
+      if (rMuted !== undefined) setRemoteMuted(rMuted);
+      if (rCamOff !== undefined) setRemoteCamOff(rCamOff);
     };
 
     socket.on('incoming-call-offer', handleIncomingOffer);
@@ -306,6 +476,7 @@ export const CallProvider = ({ children }) => {
     socket.on('remote-ice-candidate', handleIceCandidate);
     socket.on('call-declined', handleCallDeclined);
     socket.on('call-ended', handleCallEnded);
+    socket.on('media-state-change', handleMediaStateChange);
 
     return () => {
       socket.off('incoming-call-offer', handleIncomingOffer);
@@ -313,8 +484,9 @@ export const CallProvider = ({ children }) => {
       socket.off('remote-ice-candidate', handleIceCandidate);
       socket.off('call-declined', handleCallDeclined);
       socket.off('call-ended', handleCallEnded);
+      socket.off('media-state-change', handleMediaStateChange);
     };
-  }, [socket, callState, remoteUser]);
+  }, [socket, callState]);
 
   return (
     <CallContext.Provider
@@ -324,10 +496,18 @@ export const CallProvider = ({ children }) => {
         remoteUser,
         localStream,
         remoteStream,
+        incomingCamStream,
         isMuted,
         isCamOff,
+        remoteMuted,
+        remoteCamOff,
         facingMode,
         callDuration,
+        isMinimized,
+        isReconnecting,
+        isSpeakerOn,
+        permissionError,
+        callEndReason,
         startCall,
         acceptCall,
         declineCall,
@@ -335,6 +515,10 @@ export const CallProvider = ({ children }) => {
         toggleMute,
         toggleCamera,
         switchCamera,
+        toggleSpeaker,
+        minimizeCall,
+        maximizeCall,
+        clearPermissionError,
       }}
     >
       {children}

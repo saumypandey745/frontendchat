@@ -252,14 +252,18 @@ const CallsTab = () => {
 
               <Badge
                 variant={
-                  selectedCall.isMissed
+                  selectedCall.call.status === 'busy'
+                    ? 'warning'
+                    : selectedCall.isMissed
                     ? 'danger'
                     : selectedCall.call.status === 'answered'
                     ? 'success'
                     : 'warning'
                 }
               >
-                {selectedCall.isMissed
+                {selectedCall.call.status === 'busy'
+                  ? 'User Busy'
+                  : selectedCall.isMissed
                   ? 'Missed Call'
                   : selectedCall.call.status === 'answered'
                   ? 'Answered Call'

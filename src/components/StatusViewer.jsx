@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Eye, ChevronLeft, ChevronRight, Send } from 'lucide-react';
 import useStatus from '../hooks/useStatus';
 import useAuth from '../hooks/useAuth';
@@ -13,9 +13,23 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
   const [showViewers, setShowViewers] = useState(false);
   const [replyText, setReplyText] = useState('');
 
+  const touchStartY = useRef(0);
+
   const statuses = userStatusGroup?.statuses || [];
   const activeStatus = statuses[currentIndex];
   const isOwner = userStatusGroup?.user?._id === currentUser?._id;
+
+  // Keyboard navigation shortcuts
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowRight') handleNext();
+      else if (e.key === 'ArrowLeft') handlePrev();
+      else if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, currentIndex, statuses.length]);
 
   useEffect(() => {
     if (activeStatus && !isOwner) {
@@ -39,6 +53,32 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
     }
   };
 
+  // Touch Tap Zones (Left 1/3 = prev, Right 2/3 = next)
+  const handleContentClick = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const thirdWidth = rect.width / 3;
+
+    if (clickX < thirdWidth) {
+      handlePrev();
+    } else {
+      handleNext();
+    }
+  };
+
+  // Touch Swipe Down to Dismiss
+  const handleTouchStart = (e) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e) => {
+    const touchEndY = e.changedTouches[0].clientY;
+    const swipeDistance = touchEndY - touchStartY.current;
+    if (swipeDistance > 80) {
+      onClose();
+    }
+  };
+
   const handleReply = async (e) => {
     e.preventDefault();
     if (!replyText.trim()) return;
@@ -52,10 +92,14 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-lg animate-fade-in p-4">
-      <div className="relative w-full max-w-md h-[85vh] bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden flex flex-col justify-between shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-lg animate-fade-in p-0 sm:p-4 safe-p">
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="relative w-full h-full sm:max-w-md sm:h-[85vh] bg-slate-900 border-0 sm:border border-slate-800 sm:rounded-3xl rounded-none overflow-hidden flex flex-col justify-between shadow-2xl"
+      >
         {/* Progress Bar Header */}
-        <div className="p-4 space-y-3 z-10 bg-gradient-to-b from-slate-950/80 to-transparent">
+        <div className="p-4 space-y-3 z-20 bg-gradient-to-b from-slate-950/90 to-transparent pt-[env(safe-area-inset-top,1rem)]">
           <div className="flex gap-1.5">
             {statuses.map((s, idx) => (
               <div key={s._id} className="flex-1 h-1 bg-slate-700 rounded-full overflow-hidden">
@@ -81,16 +125,21 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
               </div>
             </div>
 
-            <button onClick={onClose} className="p-1 text-slate-400 hover:text-white rounded-lg">
+            <button
+              onClick={onClose}
+              className="min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-white rounded-xl flex items-center justify-center"
+              title="Close Story Viewer (Swipe Down or Esc)"
+            >
               <X className="w-6 h-6" />
             </button>
           </div>
         </div>
 
-        {/* Content Body */}
+        {/* Content Body with Left 1/3 and Right 2/3 Tap Zones */}
         <div
+          onClick={handleContentClick}
           style={{ backgroundColor: activeStatus?.type === 'text' ? activeStatus.backgroundColor : '#0f172a' }}
-          className="flex-1 flex items-center justify-center p-8 text-center text-white font-bold text-xl relative"
+          className="flex-1 flex items-center justify-center p-6 text-center text-white font-bold text-xl relative cursor-pointer select-none"
         >
           {activeStatus?.mediaUrl ? (
             <img
@@ -102,29 +151,35 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
             <p className="whitespace-pre-wrap leading-relaxed">{activeStatus?.content}</p>
           )}
 
-          {/* Nav Controls */}
+          {/* Desktop Visual Nav Buttons */}
           {currentIndex > 0 && (
             <button
-              onClick={handlePrev}
-              className="absolute left-2 p-2 bg-slate-900/40 text-white rounded-full hover:bg-slate-900"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrev();
+              }}
+              className="hidden sm:flex absolute left-3 min-h-[44px] min-w-[44px] p-2 bg-slate-900/60 text-white rounded-full hover:bg-slate-900 items-center justify-center z-10"
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
           )}
           <button
-            onClick={handleNext}
-            className="absolute right-2 p-2 bg-slate-900/40 text-white rounded-full hover:bg-slate-900"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNext();
+            }}
+            className="hidden sm:flex absolute right-3 min-h-[44px] min-w-[44px] p-2 bg-slate-900/60 text-white rounded-full hover:bg-slate-900 items-center justify-center z-10"
           >
             <ChevronRight className="w-6 h-6" />
           </button>
         </div>
 
         {/* Footer / Reply or Viewer Count */}
-        <div className="p-4 z-10 bg-gradient-to-t from-slate-950/80 to-transparent">
+        <div className="p-4 z-20 bg-gradient-to-t from-slate-950/90 to-transparent pb-[env(safe-area-inset-bottom,1rem)]">
           {isOwner ? (
             <button
               onClick={() => setShowViewers(!showViewers)}
-              className="w-full py-2 flex items-center justify-center gap-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/60 rounded-xl"
+              className="w-full min-h-[44px] py-2.5 flex items-center justify-center gap-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/80 rounded-2xl"
             >
               <Eye className="w-4 h-4 text-brand-400" />
               Viewed by {activeStatus?.viewedBy?.length || 0} people
@@ -136,11 +191,11 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 placeholder="Reply to status..."
-                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none"
+                className="flex-1 px-4 py-3 rounded-2xl bg-slate-800/90 border border-slate-700 text-white text-sm focus:outline-none"
               />
               <button
                 type="submit"
-                className="p-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl"
+                className="min-h-[44px] min-w-[44px] p-3 bg-brand-600 hover:bg-brand-500 text-white rounded-2xl flex items-center justify-center"
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -150,10 +205,10 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
 
         {/* Viewers List Modal */}
         {showViewers && (
-          <div className="absolute inset-x-0 bottom-0 max-h-64 bg-slate-900 border-t border-slate-800 p-4 rounded-t-3xl z-20 overflow-y-auto animate-fade-in">
+          <div className="absolute inset-x-0 bottom-0 max-h-64 bg-slate-900 border-t border-slate-800 p-4 rounded-t-3xl z-30 overflow-y-auto animate-fade-in">
             <div className="flex justify-between items-center mb-3">
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">Status Viewers</h4>
-              <button onClick={() => setShowViewers(false)} className="text-slate-400">
+              <button onClick={() => setShowViewers(false)} className="p-1 text-slate-400">
                 <X className="w-4 h-4" />
               </button>
             </div>

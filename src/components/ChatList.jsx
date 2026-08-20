@@ -4,6 +4,7 @@ import {
   Users,
   Pin,
   VolumeX,
+  Clock,
   Archive,
   UserPlus,
   Command,
@@ -112,14 +113,14 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
           <div className="flex items-center gap-1.5">
             <button
               onClick={onOpenCommandPalette}
-              className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-xl transition-colors"
+              className="min-h-[44px] min-w-[44px] p-2.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-xl transition-colors flex items-center justify-center"
               title="Global Search (Cmd+K)"
             >
               <Command className="w-4 h-4" />
             </button>
             <button
               onClick={() => setIsGroupModalOpen(true)}
-              className="p-2 bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-xl hover:bg-brand-500/20 transition-colors"
+              className="min-h-[44px] min-w-[44px] p-2.5 bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-xl hover:bg-brand-500/20 transition-colors flex items-center justify-center"
               title="New Group Chat"
             >
               <Users className="w-4 h-4" />
@@ -222,6 +223,14 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
       : selectedUser?._id === item.user._id;
 
     const settings = chatSettings[item.id] || {};
+    const isMuted = Boolean(
+      settings.muted &&
+        (!settings.mutedUntil || new Date(settings.mutedUntil) > new Date())
+    );
+    const isDisappearing = item.isGroup
+      ? Boolean(item.group?.disappearingDuration > 0)
+      : Boolean(settings.disappearingDuration > 0);
+
     const isOnline = !isGroup && onlineUsers.includes(item.user._id) && !item.user.hideOnlineStatus;
     const isTyping = typingUsers[item.id];
 
@@ -256,7 +265,8 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
             </h4>
             <div className="flex items-center gap-1 flex-shrink-0 text-[10px] font-semibold text-slate-400">
               {settings.pinned && <Pin className="w-3 h-3 text-brand-500 fill-brand-500" />}
-              {settings.muted && <VolumeX className="w-3 h-3 text-slate-400" />}
+              {isDisappearing && <Clock className="w-3 h-3 text-emerald-500" />}
+              {isMuted && <VolumeX className="w-3 h-3 text-slate-400" />}
               {item.lastMessage?.createdAt && formatTime(item.lastMessage.createdAt)}
             </div>
           </div>
