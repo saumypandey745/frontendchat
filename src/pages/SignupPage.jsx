@@ -49,7 +49,11 @@ const SignupPage = () => {
     setLoading(false);
 
     if (res.success) {
-      navigate('/');
+      if (res.requiresVerification) {
+        navigate('/verify-email', { state: { email: res.email || email } });
+      } else {
+        navigate('/');
+      }
     } else {
       if (res.errors) {
         const errObj = {};

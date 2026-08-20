@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Loader2, MessageSquare, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, MessageSquare, AlertCircle, ArrowRight } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
@@ -15,6 +15,7 @@ const LoginPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [unverifiedState, setUnverifiedState] = useState(null);
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -26,6 +27,7 @@ const LoginPage = () => {
 
     setLoading(true);
     setError('');
+    setUnverifiedState(null);
 
     const res = await login(email, password, rememberMe);
     setLoading(false);
@@ -34,6 +36,9 @@ const LoginPage = () => {
       navigate('/');
     } else {
       setError(res.message);
+      if (res.isUnverified) {
+        setUnverifiedState({ email: res.email || email });
+      }
     }
   };
 
@@ -55,9 +60,25 @@ const LoginPage = () => {
 
         {/* Error Alert */}
         {error && (
-          <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <span>{error}</span>
+          <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 text-xs space-y-2 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+            {unverifiedState && (
+              <div className="pt-1 border-t border-red-200/60 dark:border-red-800/60 flex items-center justify-between">
+                <span className="font-medium text-red-700 dark:text-red-300">Need a verification code?</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate('/verify-email', { state: { email: unverifiedState.email } })
+                  }
+                  className="font-bold underline text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 inline-flex items-center gap-1"
+                >
+                  Verify Email <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
         )}
 

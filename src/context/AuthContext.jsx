@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('auth:logout', handleForcedLogout);
   }, []);
 
-  // Email/Password Signup
+  // Email/Password Signup (Requires verification)
   const signup = async (name, email, password, confirmPassword) => {
     try {
       const res = await api.post('/auth/signup', {
@@ -48,14 +48,45 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (res.data.success) {
-        setAccessToken(res.data.accessToken);
-        setUser(res.data.user);
-        return { success: true, message: res.data.message };
+        return {
+          success: true,
+          requiresVerification: res.data.requiresVerification,
+          email: res.data.email,
+          message: res.data.message,
+        };
       }
     } catch (err) {
       const errors = err.response?.data?.errors;
       const message = err.response?.data?.message || 'Signup failed';
       return { success: false, message, errors };
+    }
+  };
+
+  // Verify Email
+  const verifyEmail = async (email, code) => {
+    try {
+      const res = await api.post('/auth/verify-email', { email, code });
+      if (res.data.success) {
+        setAccessToken(res.data.accessToken);
+        setUser(res.data.user);
+        return { success: true, message: res.data.message };
+      }
+    } catch (err) {
+      const message = err.response?.data?.message || 'Verification failed';
+      return { success: false, message };
+    }
+  };
+
+  // Resend Email Verification Code
+  const resendVerification = async (email) => {
+    try {
+      const res = await api.post('/auth/resend-verification', { email });
+      if (res.data.success) {
+        return { success: true, message: res.data.message };
+      }
+    } catch (err) {
+      const message = err.response?.data?.message || 'Failed to resend verification code';
+      return { success: false, message };
     }
   };
 
@@ -74,8 +105,10 @@ export const AuthProvider = ({ children }) => {
         return { success: true, message: res.data.message };
       }
     } catch (err) {
+      const isUnverified = err.response?.data?.isUnverified;
+      const unverifiedEmail = err.response?.data?.email;
       const message = err.response?.data?.message || 'Invalid email or password';
-      return { success: false, message };
+      return { success: false, message, isUnverified, email: unverifiedEmail };
     }
   };
 
@@ -142,6 +175,8 @@ export const AuthProvider = ({ children }) => {
         user,
         loading,
         signup,
+        verifyEmail,
+        resendVerification,
         login,
         googleLogin,
         logout,

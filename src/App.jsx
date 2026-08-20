@@ -11,6 +11,7 @@ import { ChatProvider } from './context/ChatContext';
 
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import ChatPage from './pages/ChatPage';
 
 const ProtectedRoute = ({ children }) => {
@@ -68,6 +69,14 @@ function App() {
                       element={
                         <PublicRoute>
                           <SignupPage />
+                        </PublicRoute>
+                      }
+                    />
+                    <Route
+                      path="/verify-email"
+                      element={
+                        <PublicRoute>
+                          <VerifyEmailPage />
                         </PublicRoute>
                       }
                     />
