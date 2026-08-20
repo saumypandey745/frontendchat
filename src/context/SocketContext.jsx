@@ -19,7 +19,12 @@ export const SocketProvider = ({ children }) => {
 
       socketInstance = io(SOCKET_URL, {
         auth: { token },
-        transports: ['websocket', 'polling'],
+        transports: ['websocket', 'polling'], // websocket-first; polling as fallback
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 10000,
+        timeout: 20000,
       });
 
       socketInstance.on('connect', () => {
