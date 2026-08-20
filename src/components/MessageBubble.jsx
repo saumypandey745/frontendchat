@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Check,
   CheckCheck,
@@ -36,6 +36,25 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
+
+  const menuRef = useRef(null);
+
+  // Close menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showMenu]);
 
   const canEdit =
     isSender &&
@@ -83,12 +102,12 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
     <div
       className={`group flex flex-col ${isGrouped ? 'mt-1' : 'mt-3'} ${
         isSender ? 'items-end' : 'items-start'
-      } animate-slide-up gpu-smooth`}
+      } animate-slide-up gpu-smooth ${showMenu || showReactionPicker ? 'z-30 relative' : ''}`}
     >
-      <div className="relative max-w-[85%] sm:max-w-[70%]">
+      <div className={`relative max-w-[85%] sm:max-w-[70%] ${showMenu || showReactionPicker ? 'z-40' : ''}`}>
         {/* Reaction Picker Overlay */}
         {showReactionPicker && (
-          <div className={`absolute -top-10 ${isSender ? 'right-0' : 'left-0'} z-40`}>
+          <div className={`absolute -top-10 ${isSender ? 'right-0' : 'left-0'} z-50`}>
             <ReactionPicker messageId={message._id} onClose={() => setShowReactionPicker(false)} />
           </div>
         )}
@@ -96,11 +115,13 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
         {/* Action Menu Trigger */}
         {!message.deletedForEveryone && (
           <div
+            ref={menuRef}
             className={`absolute top-2 ${
               isSender ? '-left-8' : '-right-8'
-            } opacity-0 group-hover:opacity-100 transition-opacity z-20`}
+            } ${showMenu ? 'opacity-100 z-50' : 'opacity-0 group-hover:opacity-100 z-20'} transition-opacity`}
           >
             <button
+              type="button"
               onClick={() => setShowMenu(!showMenu)}
               className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors"
             >
@@ -111,42 +132,46 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
             {showMenu && (
               <div
                 className={`absolute top-6 ${
-                  isSender ? 'left-0' : 'right-0'
-                } glass-dropdown py-1 w-40 z-40 text-xs font-semibold animate-pop-in`}
+                  isSender ? 'right-0' : 'left-0'
+                } glass-dropdown py-1 w-44 z-50 text-xs font-semibold animate-pop-in bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl backdrop-blur-md`}
               >
                 <button
+                  type="button"
                   onClick={() => {
                     setShowMenu(false);
                     setShowReactionPicker(true);
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <Smile className="w-3.5 h-3.5 text-amber-500" /> React
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowMenu(false);
                     setReplyingToMessage(message);
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <Reply className="w-3.5 h-3.5 text-brand-500" /> Reply
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowMenu(false);
                     onOpenForwardModal(message._id);
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <Share2 className="w-3.5 h-3.5 text-emerald-500" /> Forward
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowMenu(false);
                     toggleStarMessage(message._id);
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <Star className={`w-3.5 h-3.5 ${isStarred ? 'text-amber-500 fill-amber-500' : 'text-slate-400'}`} />
                   {isStarred ? 'Unstar' : 'Star'}
@@ -154,27 +179,30 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
 
                 {canEdit && (
                   <button
+                    type="button"
                     onClick={() => {
                       setShowMenu(false);
                       setIsEditing(true);
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <Edit2 className="w-3.5 h-3.5 text-blue-500" /> Edit
                   </button>
                 )}
 
                 <button
+                  type="button"
                   onClick={() => handleDelete(false)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5 text-slate-400" /> Delete for me
                 </button>
 
                 {isSender && (
                   <button
+                    type="button"
                     onClick={() => handleDelete(true)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-red-500" /> Delete for everyone
                   </button>
