@@ -331,17 +331,31 @@ export const ChatProvider = ({ children }) => {
     if (!socket) return;
 
     const handleNewMessage = (newMsg) => {
+      const msgSenderId = String(newMsg.senderId?._id || newMsg.senderId || '');
+      const msgReceiverId = String(newMsg.receiverId?._id || newMsg.receiverId || '');
+      const currentUserId = String(user?._id || '');
+      const currentChatId = String(activeChatId || '');
+
       const isForActiveChat =
-        (isGroupActive && newMsg.chatId === activeChatId) ||
-        (!isGroupActive &&
-          (newMsg.senderId?._id === activeChatId || newMsg.senderId === activeChatId));
+        // Group message for the currently open group
+        (isGroupActive && newMsg.chatId === currentChatId) ||
+        // 1-on-1: incoming — the OTHER person sent this message to us
+        (!isGroupActive && msgSenderId === currentChatId) ||
+        // 1-on-1: outgoing — WE sent this message to the currently open chat
+        (!isGroupActive && msgReceiverId === currentChatId && msgSenderId === currentUserId);
 
       if (isForActiveChat) {
-        setMessages((prev) => [...prev, newMsg]);
-      } else {
+        setMessages((prev) => {
+          // Avoid duplicates (server may echo back what the sender already appended optimistically)
+          const alreadyExists = prev.some((m) => m._id && m._id === newMsg._id);
+          if (alreadyExists) return prev;
+          return [...prev, newMsg];
+        });
+      } else if (msgSenderId !== currentUserId) {
+        // Only toast for messages FROM someone else (never for our own sent messages)
         setToastNotification({
           id: Date.now(),
-          senderId: newMsg.senderId?._id || newMsg.senderId,
+          senderId: msgSenderId,
           text: newMsg.text || '📷 Sent an attachment',
         });
       }
@@ -368,7 +382,7 @@ export const ChatProvider = ({ children }) => {
       socket.off('messageReaction', handleReaction);
       socket.off('groupUpdated', handleGroupUpdated);
     };
-  }, [socket, activeChatId, isGroupActive, fetchContacts]);
+  }, [socket, activeChatId, isGroupActive, fetchContacts, user]);
 
   return (
     <ChatContext.Provider
