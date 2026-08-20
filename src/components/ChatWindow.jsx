@@ -15,6 +15,7 @@ import {
   Palette,
   ChevronDown,
   Users,
+  X,
 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 
@@ -34,6 +35,7 @@ import ContactInfoPanel from './ContactInfoPanel';
 import MediaGalleryViewer from './MediaGalleryViewer';
 import ChatSearchBar from './ChatSearchBar';
 import WallpaperPickerModal from './WallpaperPickerModal';
+import StarredMessagesModal from './StarredMessagesModal';
 import EmptyState from './EmptyState';
 
 const ChatWindow = ({ onBackMobile }) => {
@@ -47,6 +49,7 @@ const ChatWindow = ({ onBackMobile }) => {
     loadMoreMessages,
     sendMessage,
     sendTypingStatus,
+    setReplyingToMessage,
     typingUsers,
     chatSettings,
   } = useChat();
@@ -76,6 +79,7 @@ const ChatWindow = ({ onBackMobile }) => {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isSearchInChatOpen, setIsSearchInChatOpen] = useState(false);
   const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
+  const [isStarredModalOpen, setIsStarredModalOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -544,9 +548,17 @@ const ChatWindow = ({ onBackMobile }) => {
       <LocationPickerModal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} onSendLocation={(loc) => sendMessage({ type: 'location', locationData: loc, text: `📍 ${loc.address}` })} />
       <ContactShareModal isOpen={isContactModalOpen} onClose={() => setIsContactModalOpen(false)} onSendContact={(c) => sendMessage({ type: 'contact', contactData: c, text: `📇 ${c.name}` })} />
       <GroupInfoPanel isOpen={isGroupInfoOpen} onClose={() => setIsGroupInfoOpen(false)} group={selectedGroup} />
-      <ContactInfoPanel isOpen={isContactInfoOpen} onClose={() => setIsContactInfoOpen(false)} contact={selectedUser} onOpenGallery={() => setIsGalleryOpen(true)} onOpenStarred={() => {}} onOpenWallpaper={() => setIsWallpaperModalOpen(true)} />
+      <ContactInfoPanel
+        isOpen={isContactInfoOpen}
+        onClose={() => setIsContactInfoOpen(false)}
+        contact={selectedUser}
+        onOpenGallery={() => setIsGalleryOpen(true)}
+        onOpenStarred={() => setIsStarredModalOpen(true)}
+        onOpenWallpaper={() => setIsWallpaperModalOpen(true)}
+      />
       <MediaGalleryViewer isOpen={isGalleryOpen} onClose={() => setIsGalleryOpen(false)} />
       <WallpaperPickerModal isOpen={isWallpaperModalOpen} onClose={() => setIsWallpaperModalOpen(false)} chatId={activeChatId} />
+      <StarredMessagesModal isOpen={isStarredModalOpen} onClose={() => setIsStarredModalOpen(false)} />
     </div>
   );
 };

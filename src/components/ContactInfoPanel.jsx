@@ -85,8 +85,19 @@ const ContactInfoPanel = ({
     await updateChatSetting(contact._id, { disappearingDuration: durationSec });
   };
 
-  const handleExportChat = () => {
-    window.open(`${api.defaults.baseURL}/users/export-chat/${contact._id}`, '_blank');
+  const handleExportChat = async () => {
+    try {
+      const res = await api.get(`/users/export-chat/${contact._id}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `ChatWave_Backup_${contact.name.replace(/\s+/g, '_')}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      alert('Failed to export chat backup.');
+    }
   };
 
   const handleReport = () => {
