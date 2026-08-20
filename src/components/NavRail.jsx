@@ -4,7 +4,7 @@ import Tooltip from './ui/Tooltip';
 import ProfileMenu from './ProfileMenu';
 import useStatus from '../hooks/useStatus';
 
-const NavRail = ({ activeTab, setActiveTab, onOpenSettings }) => {
+const NavRail = ({ activeTab, setActiveTab, onOpenSettings, showMobileChat }) => {
   const { contactStatuses } = useStatus();
   const hasUnseenStatus = contactStatuses.some((g) => !g.allViewed);
 
@@ -79,8 +79,8 @@ const NavRail = ({ activeTab, setActiveTab, onOpenSettings }) => {
         </div>
       </aside>
 
-      {/* 2. Mobile Fixed Bottom Navigation Tab Bar (< 768px) */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 h-16 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/80 z-30 flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom)] shadow-2xl">
+      {/* 2. Mobile Fixed Bottom Navigation Tab Bar (< 768px) - Hidden when active chat is open */}
+      <div className={`md:hidden ${showMobileChat ? 'hidden' : 'fixed'} bottom-0 inset-x-0 h-16 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/80 z-30 flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom)] shadow-2xl`}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;

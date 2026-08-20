@@ -62,6 +62,7 @@ const ChatPage = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
+        showMobileChat={showMobileChat}
       />
 
       {/* Main Shell Split View */}
