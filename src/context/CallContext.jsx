@@ -24,17 +24,23 @@ export const CallProvider = ({ children }) => {
   const [remoteStream, setRemoteStream] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isCamOff, setIsCamOff] = useState(false);
+  const [facingMode, setFacingMode] = useState('user');
   const [callDuration, setCallDuration] = useState(0);
 
   const peerRef = useRef(null);
   const pendingOfferRef = useRef(null);
   const timerRef = useRef(null);
+  const localStreamRef = useRef(null);
 
   // Clean up WebRTC peer & streams
   const cleanupCall = () => {
     if (peerRef.current) {
       peerRef.current.close();
       peerRef.current = null;
+    }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
     }
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop());
@@ -45,6 +51,7 @@ export const CallProvider = ({ children }) => {
     setRemoteUser(null);
     setIsMuted(false);
     setIsCamOff(false);
+    setFacingMode('user');
     setCallDuration(0);
     if (timerRef.current) clearInterval(timerRef.current);
   };
@@ -73,7 +80,9 @@ export const CallProvider = ({ children }) => {
 
     pc.ontrack = (event) => {
       if (event.streams && event.streams[0]) {
-        setRemoteStream(event.streams[0]);
+        // Construct a fresh MediaStream from tracks so React state reference updates
+        const stream = new MediaStream(event.streams[0].getTracks());
+        setRemoteStream(stream);
       }
     };
 
@@ -91,8 +100,9 @@ export const CallProvider = ({ children }) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
-        video: type === 'video',
+        video: type === 'video' ? { facingMode: 'user' } : false,
       });
+      localStreamRef.current = stream;
       setLocalStream(stream);
 
       const pc = createPeer(targetUser._id);
@@ -108,6 +118,7 @@ export const CallProvider = ({ children }) => {
       });
     } catch (err) {
       console.error('Failed to get media devices for call:', err);
+      alert(`Could not access ${type === 'video' ? 'camera/microphone' : 'microphone'}. Please check permissions.`);
       cleanupCall();
     }
   };
@@ -121,8 +132,9 @@ export const CallProvider = ({ children }) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
-        video: cType === 'video',
+        video: cType === 'video' ? { facingMode: 'user' } : false,
       });
+      localStreamRef.current = stream;
       setLocalStream(stream);
 
       const pc = createPeer(remoteUser._id);
@@ -141,6 +153,7 @@ export const CallProvider = ({ children }) => {
       startTimer();
     } catch (err) {
       console.error('Error accepting call:', err);
+      alert('Could not access media devices to answer the call.');
       cleanupCall();
     }
   };
@@ -180,8 +193,9 @@ export const CallProvider = ({ children }) => {
 
   // Toggle Mute Mic
   const toggleMute = () => {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
+    const activeStream = localStreamRef.current || localStream;
+    if (activeStream) {
+      const audioTrack = activeStream.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsMuted(!audioTrack.enabled);
@@ -191,12 +205,55 @@ export const CallProvider = ({ children }) => {
 
   // Toggle Camera
   const toggleCamera = () => {
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
+    const activeStream = localStreamRef.current || localStream;
+    if (activeStream) {
+      const videoTrack = activeStream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsCamOff(!videoTrack.enabled);
       }
+    }
+  };
+
+  // Switch Camera (Front / Back facing mode)
+  const switchCamera = async () => {
+    if (callType !== 'video' || !peerRef.current) return;
+    const nextFacingMode = facingMode === 'user' ? 'environment' : 'user';
+
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        audio: !isMuted,
+        video: { facingMode: nextFacingMode },
+      });
+
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      const activeStream = localStreamRef.current || localStream;
+
+      if (activeStream) {
+        const oldVideoTrack = activeStream.getVideoTracks()[0];
+        if (oldVideoTrack) {
+          oldVideoTrack.stop();
+          activeStream.removeTrack(oldVideoTrack);
+        }
+        if (newVideoTrack) {
+          activeStream.addTrack(newVideoTrack);
+        }
+        localStreamRef.current = activeStream;
+        setLocalStream(new MediaStream(activeStream.getTracks()));
+      }
+
+      // Replace track on WebRTC peer connection senders
+      if (peerRef.current && newVideoTrack) {
+        const senders = peerRef.current.getSenders();
+        const videoSender = senders.find((s) => s.track && s.track.kind === 'video');
+        if (videoSender) {
+          await videoSender.replaceTrack(newVideoTrack);
+        }
+      }
+
+      setFacingMode(nextFacingMode);
+    } catch (err) {
+      console.error('Failed to switch camera:', err);
     }
   };
 
@@ -269,6 +326,7 @@ export const CallProvider = ({ children }) => {
         remoteStream,
         isMuted,
         isCamOff,
+        facingMode,
         callDuration,
         startCall,
         acceptCall,
@@ -276,6 +334,7 @@ export const CallProvider = ({ children }) => {
         endCall,
         toggleMute,
         toggleCamera,
+        switchCamera,
       }}
     >
       {children}

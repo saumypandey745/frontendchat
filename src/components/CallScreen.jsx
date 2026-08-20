@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Volume2 } from 'lucide-react';
+import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Volume2, RefreshCw } from 'lucide-react';
 import useCall from '../hooks/useCall';
 
 const CallScreen = () => {
@@ -17,6 +17,7 @@ const CallScreen = () => {
     endCall,
     toggleMute,
     toggleCamera,
+    switchCamera,
   } = useCall();
 
   const localVideoRef = useRef(null);
@@ -26,13 +27,13 @@ const CallScreen = () => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
     }
-  }, [localStream]);
+  }, [localStream, callState]);
 
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
     }
-  }, [remoteStream]);
+  }, [remoteStream, callState]);
 
   if (callState === 'idle') return null;
 
@@ -146,26 +147,40 @@ const CallScreen = () => {
           className={`p-3.5 rounded-2xl transition-all ${
             isMuted ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-slate-800 text-white hover:bg-slate-700'
           }`}
+          title={isMuted ? 'Unmute Mic' : 'Mute Mic'}
         >
           {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
         </button>
 
         {/* Toggle Camera */}
         {callType === 'video' && (
-          <button
-            onClick={toggleCamera}
-            className={`p-3.5 rounded-2xl transition-all ${
-              isCamOff ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-slate-800 text-white hover:bg-slate-700'
-            }`}
-          >
-            {isCamOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-          </button>
+          <>
+            <button
+              onClick={toggleCamera}
+              className={`p-3.5 rounded-2xl transition-all ${
+                isCamOff ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-slate-800 text-white hover:bg-slate-700'
+              }`}
+              title={isCamOff ? 'Turn Camera On' : 'Turn Camera Off'}
+            >
+              {isCamOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+            </button>
+
+            {/* Switch Camera Button */}
+            <button
+              onClick={switchCamera}
+              className="p-3.5 rounded-2xl bg-slate-800 text-white hover:bg-slate-700 transition-all"
+              title="Flip / Switch Camera"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </button>
+          </>
         )}
 
         {/* End Call Button */}
         <button
           onClick={endCall}
           className="p-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl shadow-lg shadow-red-600/40 transition-transform active:scale-95"
+          title="End Call"
         >
           <PhoneOff className="w-6 h-6" />
         </button>

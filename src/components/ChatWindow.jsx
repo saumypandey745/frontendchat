@@ -30,6 +30,7 @@ import ForwardModal from './ForwardModal';
 import LocationPickerModal from './LocationPickerModal';
 import ContactShareModal from './ContactShareModal';
 import GroupInfoPanel from './GroupInfoPanel';
+import ContactInfoPanel from './ContactInfoPanel';
 import MediaGalleryViewer from './MediaGalleryViewer';
 import ChatSearchBar from './ChatSearchBar';
 import WallpaperPickerModal from './WallpaperPickerModal';
@@ -71,6 +72,7 @@ const ChatWindow = ({ onBackMobile }) => {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
+  const [isContactInfoOpen, setIsContactInfoOpen] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isSearchInChatOpen, setIsSearchInChatOpen] = useState(false);
   const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
@@ -109,11 +111,25 @@ const ChatWindow = ({ onBackMobile }) => {
     e?.preventDefault();
     if (!text.trim() && !selectedFile) return;
 
+    if (selectedFile && selectedFile.size > 25 * 1024 * 1024) {
+      alert('File size exceeds the 25MB limit.');
+      return;
+    }
+
     setSending(true);
+
+    let msgType = 'text';
+    if (selectedFile) {
+      if (selectedFile.type.startsWith('image/')) msgType = 'image';
+      else if (selectedFile.type.startsWith('video/')) msgType = 'video';
+      else if (selectedFile.type.startsWith('audio/')) msgType = 'audio';
+      else msgType = 'document';
+    }
+
     await sendMessage({
       text,
       file: selectedFile,
-      type: selectedFile ? (selectedFile.type.startsWith('image/') ? 'image' : 'document') : 'text',
+      type: msgType,
     });
 
     setText('');
@@ -145,11 +161,37 @@ const ChatWindow = ({ onBackMobile }) => {
   const currentTitle = isGroupActive ? selectedGroup.name : selectedUser.name;
   const currentAvatar = isGroupActive ? selectedGroup.iconUrl : selectedUser.avatarUrl;
 
+  const getWallpaperStyle = () => {
+    if (!activeWallpaper) return {};
+    if (
+      activeWallpaper.startsWith('url(') ||
+      activeWallpaper.startsWith('http://') ||
+      activeWallpaper.startsWith('https://') ||
+      activeWallpaper.startsWith('/uploads/')
+    ) {
+      const bgUrl = activeWallpaper.startsWith('url(') ? activeWallpaper : `url(${activeWallpaper})`;
+      return {
+        backgroundImage: bgUrl,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      };
+    }
+    if (activeWallpaper.startsWith('linear-gradient')) {
+      return { backgroundImage: activeWallpaper };
+    }
+    return { backgroundColor: activeWallpaper };
+  };
+
   return (
     <div
-      style={{ backgroundColor: activeWallpaper || undefined }}
+      style={getWallpaperStyle()}
       className="flex-1 flex flex-col h-full bg-slate-50/60 dark:bg-slate-950/60 relative overflow-hidden"
     >
+      {/* Background Contrast Overlay for Readability */}
+      {activeWallpaper && (
+        <div className="absolute inset-0 bg-slate-950/20 backdrop-brightness-95 pointer-events-none z-0" />
+      )}
       {/* Header Bar */}
       <div className="px-5 py-3 glass-panel border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
@@ -162,13 +204,13 @@ const ChatWindow = ({ onBackMobile }) => {
 
           <div
             className="relative cursor-pointer"
-            onClick={() => isGroupActive && setIsGroupInfoOpen(true)}
+            onClick={() => (isGroupActive ? setIsGroupInfoOpen(true) : setIsContactInfoOpen(true))}
           >
             <img src={currentAvatar} alt={currentTitle} className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-200/80 dark:ring-slate-800/80 shadow-sm" />
             {isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-slate-900" />}
           </div>
 
-          <div className="cursor-pointer" onClick={() => isGroupActive && setIsGroupInfoOpen(true)}>
+          <div className="cursor-pointer" onClick={() => (isGroupActive ? setIsGroupInfoOpen(true) : setIsContactInfoOpen(true))}>
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">{currentTitle}</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {isTyping ? (
@@ -220,9 +262,9 @@ const ChatWindow = ({ onBackMobile }) => {
             <Palette className="w-4 h-4" />
           </button>
           <button
-            onClick={() => (isGroupActive ? setIsGroupInfoOpen(true) : setIsGalleryOpen(true))}
+            onClick={() => (isGroupActive ? setIsGroupInfoOpen(true) : setIsContactInfoOpen(true))}
             className="p-2.5 text-slate-600 dark:text-slate-300 hover:text-brand-500 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
-            title="Info & Gallery"
+            title="Info & Options"
           >
             <MoreVertical className="w-4 h-4" />
           </button>
@@ -295,6 +337,43 @@ const ChatWindow = ({ onBackMobile }) => {
       {/* Quoted Reply Banner */}
       <ReplyPreview />
 
+      {/* Selected File Preview Banner */}
+      {selectedFile && (
+        <div className="px-4 py-2 bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between animate-fade-in z-20">
+          <div className="flex items-center gap-3 truncate">
+            {filePreview ? (
+              selectedFile.type.startsWith('video/') ? (
+                <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-white text-[10px] font-bold">
+                  VIDEO
+                </div>
+              ) : (
+                <img src={filePreview} alt="Preview" className="w-10 h-10 rounded-xl object-cover" />
+              )
+            ) : (
+              <div className="p-2 bg-brand-500/10 text-brand-500 rounded-xl">
+                <FileText className="w-5 h-5" />
+              </div>
+            )}
+            <div className="truncate text-xs">
+              <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{selectedFile.name}</p>
+              <p className="text-[10px] text-slate-400">
+                {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedFile(null);
+              setFilePreview('');
+            }}
+            className="p-1.5 text-slate-400 hover:text-red-500 rounded-xl transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Hidden File Inputs */}
       <input
         ref={fileInputRef}
@@ -312,7 +391,7 @@ const ChatWindow = ({ onBackMobile }) => {
       <input
         ref={docInputRef}
         type="file"
-        accept=".pdf,.doc,.docx,.zip,.txt"
+        accept=".pdf,.doc,.docx,.zip,.txt,.csv,.xlsx,.pptx"
         onChange={(e) => {
           const file = e.target.files[0];
           if (file) setSelectedFile(file);
@@ -342,7 +421,11 @@ const ChatWindow = ({ onBackMobile }) => {
           <button
             type="button"
             onClick={() => setShowAttachMenu(!showAttachMenu)}
-            className="p-2.5 text-slate-400 hover:text-brand-500 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className={`p-2.5 rounded-2xl transition-colors ${
+              showAttachMenu
+                ? 'bg-brand-500/10 text-brand-500'
+                : 'text-slate-400 hover:text-brand-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
           >
             <Paperclip className="w-5 h-5" />
           </button>
@@ -385,6 +468,67 @@ const ChatWindow = ({ onBackMobile }) => {
         </form>
       )}
 
+      {/* Attachment Options Popover */}
+      {showAttachMenu && (
+        <div className="absolute bottom-20 left-12 z-30 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-2 shadow-glass-lg animate-pop-in flex flex-col space-y-1 w-52">
+          <button
+            type="button"
+            onClick={() => {
+              setShowAttachMenu(false);
+              fileInputRef.current?.click();
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
+          >
+            <div className="p-2 bg-blue-500/10 text-blue-500 rounded-xl">
+              <User className="w-4 h-4" />
+            </div>
+            <span>Photos & Videos</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowAttachMenu(false);
+              docInputRef.current?.click();
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
+          >
+            <div className="p-2 bg-purple-500/10 text-purple-500 rounded-xl">
+              <FileText className="w-4 h-4" />
+            </div>
+            <span>Document</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowAttachMenu(false);
+              setIsLocationModalOpen(true);
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
+          >
+            <div className="p-2 bg-red-500/10 text-red-500 rounded-xl">
+              <MapPin className="w-4 h-4" />
+            </div>
+            <span>Location</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowAttachMenu(false);
+              setIsContactModalOpen(true);
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors"
+          >
+            <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl">
+              <User className="w-4 h-4" />
+            </div>
+            <span>Contact Card</span>
+          </button>
+        </div>
+      )}
+
       {/* Emoji Picker Popover */}
       {showEmojiPicker && (
         <div className="absolute bottom-20 left-4 z-30 shadow-glass-lg rounded-3xl animate-pop-in">
@@ -400,6 +544,7 @@ const ChatWindow = ({ onBackMobile }) => {
       <LocationPickerModal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} onSendLocation={(loc) => sendMessage({ type: 'location', locationData: loc, text: `📍 ${loc.address}` })} />
       <ContactShareModal isOpen={isContactModalOpen} onClose={() => setIsContactModalOpen(false)} onSendContact={(c) => sendMessage({ type: 'contact', contactData: c, text: `📇 ${c.name}` })} />
       <GroupInfoPanel isOpen={isGroupInfoOpen} onClose={() => setIsGroupInfoOpen(false)} group={selectedGroup} />
+      <ContactInfoPanel isOpen={isContactInfoOpen} onClose={() => setIsContactInfoOpen(false)} contact={selectedUser} onOpenGallery={() => setIsGalleryOpen(true)} onOpenStarred={() => {}} onOpenWallpaper={() => setIsWallpaperModalOpen(true)} />
       <MediaGalleryViewer isOpen={isGalleryOpen} onClose={() => setIsGalleryOpen(false)} />
       <WallpaperPickerModal isOpen={isWallpaperModalOpen} onClose={() => setIsWallpaperModalOpen(false)} chatId={activeChatId} />
     </div>

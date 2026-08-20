@@ -61,6 +61,24 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
     return format(new Date(dateStr), 'HH:mm');
   };
 
+  // Group reactions by emoji
+  const groupedReactions = React.useMemo(() => {
+    if (!message.reactions || message.reactions.length === 0) return [];
+    const map = new Map();
+    message.reactions.forEach((r) => {
+      const uName = r.userId?.name || 'User';
+      const isMine = (r.userId?._id || r.userId)?.toString() === user?._id?.toString();
+      if (!map.has(r.emoji)) {
+        map.set(r.emoji, { emoji: r.emoji, count: 0, names: [], isMine: false });
+      }
+      const entry = map.get(r.emoji);
+      entry.count += 1;
+      entry.names.push(uName);
+      if (isMine) entry.isMine = true;
+    });
+    return Array.from(map.values());
+  }, [message.reactions, user]);
+
   return (
     <div
       className={`group flex flex-col ${isGrouped ? 'mt-1' : 'mt-3'} ${
@@ -197,7 +215,17 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
           )}
 
           {/* Special Type Rendering */}
-          {message.type === 'audio' && message.fileData?.url ? (
+          {message.type === 'video' || (message.fileData?.mimeType && message.fileData.mimeType.startsWith('video/')) ? (
+            <div className="space-y-2">
+              <video
+                controls
+                playsInline
+                src={message.fileData?.url || message.imageUrl}
+                className="max-h-60 w-full object-cover rounded-2xl shadow-sm border border-slate-700/50"
+              />
+              {message.text && <p className="whitespace-pre-wrap break-words leading-relaxed">{message.text}</p>}
+            </div>
+          ) : message.type === 'audio' && message.fileData?.url ? (
             <WaveformPlayer audioUrl={message.fileData.url} isSender={isSender} />
           ) : message.type === 'location' && message.locationData ? (
             <div className="space-y-1.5 p-2 bg-black/10 dark:bg-black/30 rounded-2xl">
@@ -229,7 +257,9 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
               <a
                 href={message.fileData.url}
                 download
-                className="px-2.5 py-1 text-[10px] font-bold bg-white text-brand-600 rounded-xl shadow"
+                target="_blank"
+                rel="noreferrer"
+                className="px-2.5 py-1 text-[10px] font-bold bg-white text-brand-600 rounded-xl shadow hover:bg-slate-50 transition-colors"
               >
                 Download
               </a>
@@ -300,14 +330,23 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
           </div>
         </div>
 
-        {/* Reaction Pill Overlay */}
-        {message.reactions && message.reactions.length > 0 && (
+        {/* Reaction Badges */}
+        {groupedReactions.length > 0 && (
           <div className={`flex flex-wrap gap-1 mt-1 ${isSender ? 'justify-end' : 'justify-start'}`}>
-            {message.reactions.map((r, idx) => (
-              <Tooltip key={idx} content={`Reacted by ${r.userId?.name || 'User'}`}>
-                <span className="px-2 py-0.5 text-[10px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-glass-sm animate-pop-in cursor-pointer">
-                  {r.emoji}
-                </span>
+            {groupedReactions.map((gr) => (
+              <Tooltip key={gr.emoji} content={`Reacted by: ${gr.names.join(', ')}`}>
+                <button
+                  type="button"
+                  onClick={() => toggleReaction(message._id, gr.emoji)}
+                  className={`px-2 py-0.5 text-[11px] font-bold border rounded-full shadow-glass-sm animate-pop-in cursor-pointer transition-transform hover:scale-110 active:scale-95 flex items-center gap-1 ${
+                    gr.isMine
+                      ? 'bg-brand-500/10 border-brand-500 text-brand-600 dark:text-brand-400'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                  }`}
+                >
+                  <span>{gr.emoji}</span>
+                  {gr.count > 1 && <span className="text-[10px] opacity-80">{gr.count}</span>}
+                </button>
               </Tooltip>
             ))}
           </div>
