@@ -126,6 +126,23 @@ export const ChatProvider = ({ children }) => {
       setPage(1);
       setHasMore(false);
       fetchMessages(contactUser._id, 1, false, false);
+
+      // If user was found via search and is not yet in the contacts list,
+      // inject a temporary entry so they appear in the sidebar immediately.
+      setContacts((prev) => {
+        const alreadyExists = prev.some((c) => c.user._id === contactUser._id);
+        if (alreadyExists) return prev;
+        return [
+          {
+            user: contactUser,
+            isGroup: false,
+            lastMessage: null,
+            unreadCount: 0,
+            _isTemporary: true, // flag for awareness; removed on next fetchContacts
+          },
+          ...prev,
+        ];
+      });
     },
     [fetchMessages]
   );

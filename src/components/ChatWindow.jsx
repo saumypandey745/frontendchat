@@ -243,6 +243,25 @@ const ChatWindow = ({ onBackMobile }) => {
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto p-5 space-y-2 relative"
       >
+        {/* "New conversation" banner — shown when chat is empty */}
+        {!loadingMessages && messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-12">
+            <div className="w-16 h-16 rounded-3xl bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center shadow-glow-brand">
+              <img
+                src={currentAvatar}
+                alt={currentTitle}
+                className="w-14 h-14 rounded-full object-cover ring-2 ring-brand-500/30"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{currentTitle}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                No messages yet. Say hi! 👋
+              </p>
+            </div>
+          </div>
+        )}
+
         {messages.map((msg, index) => {
           const prevMsg = messages[index - 1];
           const isGrouped =
