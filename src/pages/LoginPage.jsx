@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Loader2, MessageSquare, AlertCircle } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
-import GoogleAuthButton from '../components/GoogleAuthButton';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
 const LoginPage = () => {
@@ -141,17 +140,6 @@ const LoginPage = () => {
             Sign In
           </button>
         </form>
-
-        {/* Divider */}
-        <div className="relative flex items-center justify-center">
-          <div className="border-t border-slate-200 dark:border-slate-800 w-full" />
-          <span className="bg-white dark:bg-slate-900 px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider absolute">
-            Or continue with
-          </span>
-        </div>
-
-        {/* Google OAuth Button */}
-        <GoogleAuthButton label="Sign in with Google" />
 
         {/* Bottom Signup Link */}
         <p className="text-center text-xs text-slate-500 dark:text-slate-400">
