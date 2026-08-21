@@ -22,10 +22,14 @@ const LoginPage = () => {
   const handleVerifyEmailClick = async () => {
     if (!unverifiedState?.email || sendingCode) return;
     setSendingCode(true);
-    await resendVerification(unverifiedState.email);
+    const res = await resendVerification(unverifiedState.email);
     setSendingCode(false);
     navigate('/verify-email', {
-      state: { email: unverifiedState.email, codeSent: true },
+      state: {
+        email: unverifiedState.email,
+        codeSent: res?.emailSent !== false,
+        emailError: res?.emailSent === false ? res?.emailError : null,
+      },
     });
   };
 
