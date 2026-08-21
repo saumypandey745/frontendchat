@@ -51,12 +51,25 @@ export const AuthProvider = ({ children }) => {
       if (res.data.success) {
         if (res.data.code) {
           try {
+            const recipientEmail = res.data.email || email;
+            const recipientName = res.data.name || name || 'User';
+            const verificationCode = res.data.code;
+
             await sendEmail({
-              to_email: res.data.email || email,
-              to_name: res.data.name || name || 'User',
-              otp: res.data.code,
-              code: res.data.code,
-              email_type: 'verification',
+              to_email: recipientEmail,
+              user_email: recipientEmail,
+              email: recipientEmail,
+              reply_to: recipientEmail,
+              to_name: recipientName,
+              user_name: recipientName,
+              name: recipientName,
+              otp: verificationCode,
+              code: verificationCode,
+              passcode: verificationCode,
+              verification_code: verificationCode,
+              from_name: 'ChatWave',
+              subject: 'ChatWave - Email Verification Code',
+              message: `Your ChatWave verification code is: ${verificationCode}`,
             });
           } catch (emailErr) {
             console.error('[AUTH] Failed to send verification email via EmailJS:', emailErr);
@@ -98,12 +111,25 @@ export const AuthProvider = ({ children }) => {
       if (res.data.success) {
         if (res.data.code) {
           try {
+            const recipientEmail = res.data.email || email;
+            const recipientName = res.data.name || 'User';
+            const verificationCode = res.data.code;
+
             await sendEmail({
-              to_email: res.data.email || email,
-              to_name: res.data.name || 'User',
-              otp: res.data.code,
-              code: res.data.code,
-              email_type: 'verification',
+              to_email: recipientEmail,
+              user_email: recipientEmail,
+              email: recipientEmail,
+              reply_to: recipientEmail,
+              to_name: recipientName,
+              user_name: recipientName,
+              name: recipientName,
+              otp: verificationCode,
+              code: verificationCode,
+              passcode: verificationCode,
+              verification_code: verificationCode,
+              from_name: 'ChatWave',
+              subject: 'ChatWave - Email Verification Code',
+              message: `Your ChatWave verification code is: ${verificationCode}`,
             });
           } catch (emailErr) {
             console.error('[AUTH] Failed to send resend-verification email via EmailJS:', emailErr);

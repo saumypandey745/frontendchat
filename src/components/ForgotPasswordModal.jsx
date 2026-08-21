@@ -71,12 +71,25 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
       if (res.data.success) {
         if (res.data.otp) {
           try {
+            const recipientEmail = res.data.email || email.trim();
+            const recipientName = res.data.name || 'User';
+            const otpCode = res.data.otp;
+
             await sendEmail({
-              to_email: res.data.email || email.trim(),
-              to_name: res.data.name || 'User',
-              otp: res.data.otp,
-              code: res.data.otp,
-              email_type: 'password_reset',
+              to_email: recipientEmail,
+              user_email: recipientEmail,
+              email: recipientEmail,
+              reply_to: recipientEmail,
+              to_name: recipientName,
+              user_name: recipientName,
+              name: recipientName,
+              otp: otpCode,
+              code: otpCode,
+              passcode: otpCode,
+              verification_code: otpCode,
+              from_name: 'ChatWave',
+              subject: 'ChatWave - Password Reset OTP',
+              message: `Your ChatWave password reset OTP is: ${otpCode}`,
             });
           } catch (emailErr) {
             console.error('[AUTH] Failed to send password reset OTP via EmailJS:', emailErr);
@@ -166,12 +179,25 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
       if (res.data.success) {
         if (res.data.otp) {
           try {
+            const recipientEmail = res.data.email || email.trim();
+            const recipientName = res.data.name || 'User',
+            otpCode = res.data.otp;
+
             await sendEmail({
-              to_email: res.data.email || email.trim(),
-              to_name: res.data.name || 'User',
-              otp: res.data.otp,
-              code: res.data.otp,
-              email_type: 'password_reset',
+              to_email: recipientEmail,
+              user_email: recipientEmail,
+              email: recipientEmail,
+              reply_to: recipientEmail,
+              to_name: recipientName,
+              user_name: recipientName,
+              name: recipientName,
+              otp: otpCode,
+              code: otpCode,
+              passcode: otpCode,
+              verification_code: otpCode,
+              from_name: 'ChatWave',
+              subject: 'ChatWave - Password Reset OTP',
+              message: `Your ChatWave password reset OTP is: ${otpCode}`,
             });
           } catch (emailErr) {
             console.error('[AUTH] Failed to send resend OTP via EmailJS:', emailErr);
