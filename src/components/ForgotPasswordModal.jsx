@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Mail, KeyRound, Lock, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 import api from '../lib/axios';
+import { sendEmail } from '../utils/email';
 
 const ForgotPasswordModal = ({ isOpen, onClose }) => {
   const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password, 4: Done
@@ -68,6 +69,19 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
     try {
       const res = await api.post('/auth/forgot-password', { email: email.trim() });
       if (res.data.success) {
+        if (res.data.otp) {
+          try {
+            await sendEmail({
+              to_email: res.data.email || email.trim(),
+              to_name: res.data.name || 'User',
+              otp: res.data.otp,
+              code: res.data.otp,
+              email_type: 'password_reset',
+            });
+          } catch (emailErr) {
+            console.error('[AUTH] Failed to send password reset OTP via EmailJS:', emailErr);
+          }
+        }
         setStep(2);
         setCooldown(60);
       }
@@ -150,6 +164,19 @@ const ForgotPasswordModal = ({ isOpen, onClose }) => {
     try {
       const res = await api.post('/auth/forgot-password', { email: email.trim() });
       if (res.data.success) {
+        if (res.data.otp) {
+          try {
+            await sendEmail({
+              to_email: res.data.email || email.trim(),
+              to_name: res.data.name || 'User',
+              otp: res.data.otp,
+              code: res.data.otp,
+              email_type: 'password_reset',
+            });
+          } catch (emailErr) {
+            console.error('[AUTH] Failed to send resend OTP via EmailJS:', emailErr);
+          }
+        }
         setSuccessMsg('A new OTP has been sent to your email.');
         setCooldown(60);
       }

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import api, { setAccessToken } from '../lib/axios';
+import { sendEmail } from '../utils/email';
 
 const AuthContext = createContext();
 
@@ -48,11 +49,24 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (res.data.success) {
+        if (res.data.code) {
+          try {
+            await sendEmail({
+              to_email: res.data.email || email,
+              to_name: res.data.name || name || 'User',
+              otp: res.data.code,
+              code: res.data.code,
+              email_type: 'verification',
+            });
+          } catch (emailErr) {
+            console.error('[AUTH] Failed to send verification email via EmailJS:', emailErr);
+          }
+        }
         return {
           success: true,
           requiresVerification: res.data.requiresVerification,
-          email: res.data.email,
-          message: res.data.message,
+          email: res.data.email || email,
+          message: res.data.message || 'Account created! Please check your email for the verification code.',
         };
       }
     } catch (err) {
@@ -82,7 +96,24 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post('/auth/resend-verification', { email });
       if (res.data.success) {
-        return { success: true, message: res.data.message };
+        if (res.data.code) {
+          try {
+            await sendEmail({
+              to_email: res.data.email || email,
+              to_name: res.data.name || 'User',
+              otp: res.data.code,
+              code: res.data.code,
+              email_type: 'verification',
+            });
+          } catch (emailErr) {
+            console.error('[AUTH] Failed to send resend-verification email via EmailJS:', emailErr);
+            return {
+              success: false,
+              message: 'Verification code generated, but failed to send email. Please try again.',
+            };
+          }
+        }
+        return { success: true, message: 'A new verification code has been sent to your email address.' };
       }
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to resend verification code';
