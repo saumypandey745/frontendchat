@@ -9,13 +9,19 @@ const VerifyEmailPage = () => {
   const { verifyEmail, resendVerification } = useAuth();
 
   const email = location.state?.email || new URLSearchParams(location.search).get('email') || '';
+  const codeSentInitially = location.state?.codeSent || false;
+  const emailErrorInitially = location.state?.emailError || '';
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-  const [cooldown, setCooldown] = useState(60); // 60s cooldown timer
+  const [error, setError] = useState(
+    emailErrorInitially ? `Email delivery notice: ${emailErrorInitially}` : ''
+  );
+  const [successMsg, setSuccessMsg] = useState(
+    codeSentInitially && !emailErrorInitially ? 'A verification code has been sent to your email address.' : ''
+  );
+  const [cooldown, setCooldown] = useState(codeSentInitially ? 60 : 0);
 
   const inputRefs = useRef([]);
 
@@ -113,7 +119,11 @@ const VerifyEmailPage = () => {
     setResending(false);
 
     if (res.success) {
-      setSuccessMsg(res.message);
+      if (res.emailSent === false) {
+        setError(`Code generated, but EmailJS failed to send email: ${res.emailError || 'Unknown error'}`);
+      } else {
+        setSuccessMsg(res.message);
+      }
       setCooldown(60); // Reset 60-second cooldown timer
     } else {
       setError(res.message);

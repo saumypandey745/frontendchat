@@ -49,6 +49,9 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (res.data.success) {
+        let emailSent = true;
+        let emailErrorMsg = '';
+
         if (res.data.code) {
           try {
             const recipientEmail = res.data.email || email;
@@ -72,6 +75,8 @@ export const AuthProvider = ({ children }) => {
               message: `Your ChatWave verification code is: ${verificationCode}`,
             });
           } catch (emailErr) {
+            emailSent = false;
+            emailErrorMsg = emailErr?.text || emailErr?.message || 'EmailJS service failed';
             console.error('[AUTH] Failed to send verification email via EmailJS:', emailErr);
           }
         }
@@ -79,7 +84,11 @@ export const AuthProvider = ({ children }) => {
           success: true,
           requiresVerification: res.data.requiresVerification,
           email: res.data.email || email,
-          message: res.data.message || 'Account created! Please check your email for the verification code.',
+          emailSent,
+          emailError: emailErrorMsg,
+          message: emailSent
+            ? (res.data.message || 'Account created! Please check your email for the verification code.')
+            : `Account created, but EmailJS failed to send email: ${emailErrorMsg}`,
         };
       }
     } catch (err) {
@@ -109,6 +118,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post('/auth/resend-verification', { email });
       if (res.data.success) {
+        let emailSent = true;
+        let emailErrorMsg = '';
+
         if (res.data.code) {
           try {
             const recipientEmail = res.data.email || email;
@@ -132,14 +144,19 @@ export const AuthProvider = ({ children }) => {
               message: `Your ChatWave verification code is: ${verificationCode}`,
             });
           } catch (emailErr) {
+            emailSent = false;
+            emailErrorMsg = emailErr?.text || emailErr?.message || 'EmailJS service failed';
             console.error('[AUTH] Failed to send resend-verification email via EmailJS:', emailErr);
-            return {
-              success: false,
-              message: 'Verification code generated, but failed to send email. Please try again.',
-            };
           }
         }
-        return { success: true, message: 'A new verification code has been sent to your email address.' };
+        return {
+          success: true,
+          emailSent,
+          emailError: emailErrorMsg,
+          message: emailSent
+            ? 'A new verification code has been sent to your email address.'
+            : `Verification code generated, but EmailJS failed to send email: ${emailErrorMsg}`,
+        };
       }
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to resend verification code';

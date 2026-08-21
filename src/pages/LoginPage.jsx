@@ -5,7 +5,7 @@ import useAuth from '../hooks/useAuth';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
 const LoginPage = () => {
-  const { login } = useAuth();
+  const { login, resendVerification } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -14,9 +14,20 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
   const [error, setError] = useState('');
   const [unverifiedState, setUnverifiedState] = useState(null);
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+
+  const handleVerifyEmailClick = async () => {
+    if (!unverifiedState?.email || sendingCode) return;
+    setSendingCode(true);
+    await resendVerification(unverifiedState.email);
+    setSendingCode(false);
+    navigate('/verify-email', {
+      state: { email: unverifiedState.email, codeSent: true },
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -70,12 +81,19 @@ const LoginPage = () => {
                 <span className="font-medium text-red-700 dark:text-red-300">Need a verification code?</span>
                 <button
                   type="button"
-                  onClick={() =>
-                    navigate('/verify-email', { state: { email: unverifiedState.email } })
-                  }
-                  className="font-bold underline text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 inline-flex items-center gap-1"
+                  disabled={sendingCode}
+                  onClick={handleVerifyEmailClick}
+                  className="font-bold underline text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 inline-flex items-center gap-1 disabled:opacity-50"
                 >
-                  Verify Email <ArrowRight className="w-3 h-3" />
+                  {sendingCode ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" /> Sending...
+                    </>
+                  ) : (
+                    <>
+                      Verify Email <ArrowRight className="w-3 h-3" />
+                    </>
+                  )}
                 </button>
               </div>
             )}
