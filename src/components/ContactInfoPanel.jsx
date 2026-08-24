@@ -35,7 +35,7 @@ const ContactInfoPanel = ({
   onOpenStarred,
   onOpenWallpaper,
 }) => {
-  const { user, setUser } = useAuth();
+  const { user, toggleBlockUser, isUserBlocked } = useAuth();
   const {
     messages,
     chatSettings,
@@ -95,9 +95,7 @@ const ContactInfoPanel = ({
 
   if (!isOpen || !contact) return null;
 
-  const isBlocked = (user?.blockedUsers || []).some(
-    (b) => (b._id || b).toString() === contact._id.toString()
-  );
+  const isBlocked = isUserBlocked(contact._id);
 
   const currentSettings = chatSettings[contact._id] || {};
   const isMuted = Boolean(
@@ -115,22 +113,13 @@ const ContactInfoPanel = ({
 
   const handleToggleBlock = async () => {
     setLoadingBlock(true);
-    try {
-      const endpoint = isBlocked ? `/users/${contact._id}/unblock` : `/users/${contact._id}/block`;
-      const res = await api.post(endpoint);
-      if (res.data.success) {
-        if (user) {
-          const updatedBlocked = res.data.blockedUsers || [];
-          setUser({ ...user, blockedUsers: updatedBlocked });
-        }
-        fetchContacts(false);
-      }
-    } catch (err) {
-      console.error('Error toggling block state:', err);
-      alert(getErrorMessage(err, 'Failed to update block status'));
-    } finally {
-      setLoadingBlock(false);
-      setShowBlockConfirm(false);
+    const res = await toggleBlockUser(contact._id);
+    setLoadingBlock(false);
+    setShowBlockConfirm(false);
+    if (res?.success) {
+      fetchContacts(false);
+    } else if (res?.message) {
+      alert(res.message);
     }
   };
 

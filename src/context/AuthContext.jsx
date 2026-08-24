@@ -247,10 +247,56 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const isUserBlocked = (targetUserId) => {
+    if (!user?.blockedUsers || !targetUserId) return false;
+    return user.blockedUsers.some(
+      (b) => (b._id || b).toString() === targetUserId.toString()
+    );
+  };
+
+  const toggleBlockUser = async (targetUserId) => {
+    if (!user || !targetUserId) return { success: false, message: 'Invalid block request' };
+
+    const currentlyBlocked = isUserBlocked(targetUserId);
+
+    // 1. OPTIMISTIC UPDATE: Toggle targetUserId in user.blockedUsers immediately
+    const previousBlockedUsers = user.blockedUsers || [];
+    const optimisticBlockedUsers = currentlyBlocked
+      ? previousBlockedUsers.filter((b) => (b._id || b).toString() !== targetUserId.toString())
+      : [...previousBlockedUsers, targetUserId];
+
+    setUser((prevUser) => (prevUser ? { ...prevUser, blockedUsers: optimisticBlockedUsers } : prevUser));
+
+    // 2. Perform API call
+    try {
+      const endpoint = currentlyBlocked
+        ? `/users/${targetUserId}/unblock`
+        : `/users/${targetUserId}/block`;
+
+      const res = await api.post(endpoint);
+
+      if (res.data?.success) {
+        const serverBlockedUsers = res.data.blockedUsers || optimisticBlockedUsers;
+        setUser((prevUser) => (prevUser ? { ...prevUser, blockedUsers: serverBlockedUsers } : prevUser));
+        return { success: true, isBlocked: !currentlyBlocked, message: res.data.message };
+      } else {
+        // Rollback on non-success
+        setUser((prevUser) => (prevUser ? { ...prevUser, blockedUsers: previousBlockedUsers } : prevUser));
+        return { success: false, message: res.data?.message || 'Failed to update block status' };
+      }
+    } catch (err) {
+      // 3. Rollback on error
+      setUser((prevUser) => (prevUser ? { ...prevUser, blockedUsers: previousBlockedUsers } : prevUser));
+      const message = err.response?.data?.message || 'Failed to update block status';
+      return { success: false, message };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
+        setUser,
         loading,
         signup,
         verifyEmail,
@@ -260,6 +306,8 @@ export const AuthProvider = ({ children }) => {
         logout,
         updateProfile,
         updateSettings,
+        toggleBlockUser,
+        isUserBlocked,
       }}
     >
       {children}

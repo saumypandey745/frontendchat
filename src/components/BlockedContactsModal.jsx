@@ -4,7 +4,7 @@ import api from '../lib/axios';
 import useAuth from '../hooks/useAuth';
 
 const BlockedContactsModal = ({ isOpen, onClose }) => {
-  const { user, setUser } = useAuth();
+  const { toggleBlockUser } = useAuth();
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -27,17 +27,11 @@ const BlockedContactsModal = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const handleUnblock = async (targetUserId) => {
-    try {
-      const res = await api.post(`/users/${targetUserId}/unblock`);
-      if (res.data.success) {
-        if (user) {
-          const updatedBlocked = res.data.blockedUsers || [];
-          setUser({ ...user, blockedUsers: updatedBlocked });
-        }
-        fetchBlocked();
-      }
-    } catch (e) {
-      alert(e.response?.data?.message || 'Unblock failed');
+    const res = await toggleBlockUser(targetUserId);
+    if (res?.success) {
+      fetchBlocked();
+    } else if (res?.message) {
+      alert(res.message);
     }
   };
 

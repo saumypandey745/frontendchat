@@ -54,7 +54,7 @@ import StarredMessagesModal from './StarredMessagesModal';
 import EmptyState from './EmptyState';
 
 const ChatWindow = ({ onBackMobile }) => {
-  const { user } = useAuth();
+  const { user, isUserBlocked } = useAuth();
   const {
     selectedUser,
     selectedGroup,
@@ -408,7 +408,7 @@ const ChatWindow = ({ onBackMobile }) => {
                         className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5"
                       >
                         <Ban className="w-4 h-4 text-red-500" />
-                        <span>Block / Unblock User</span>
+                        <span>{isUserBlocked(selectedUser?._id) ? 'Unblock User' : 'Block User'}</span>
                       </button>
                     </div>
                   )}
