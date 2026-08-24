@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Settings, Sun, Moon, Monitor, LogOut, Star } from 'lucide-react';
+import { User, Settings, Sun, Moon, Monitor, LogOut, Star, Laptop } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 import useTheme from '../hooks/useTheme';
 import EditProfileModal from './EditProfileModal';
 import AccountSettingsModal from './AccountSettingsModal';
 import StarredMessagesModal from './StarredMessagesModal';
+import LinkedDevicesModal from './LinkedDevicesModal';
 
 const FALLBACK_AVATAR = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%230d9488'/%3E%3Ccircle cx='20' cy='16' r='7' fill='white' opacity='0.85'/%3E%3Cellipse cx='20' cy='36' rx='12' ry='10' fill='white' opacity='0.85'/%3E%3C/svg%3E`;
 
@@ -18,6 +19,7 @@ const ProfileMenu = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isStarredModalOpen, setIsStarredModalOpen] = useState(false);
+  const [isDevicesModalOpen, setIsDevicesModalOpen] = useState(false);
 
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
@@ -126,6 +128,12 @@ const ProfileMenu = () => {
               <User className="w-4 h-4 text-brand-500 flex-shrink-0" /> Edit Profile
             </button>
             <button
+              onClick={() => { setIsOpen(false); setIsDevicesModalOpen(true); }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
+            >
+              <Laptop className="w-4 h-4 text-brand-500 flex-shrink-0" /> Linked Devices
+            </button>
+            <button
               onClick={() => { setIsOpen(false); setIsStarredModalOpen(true); }}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
             >
@@ -219,6 +227,7 @@ const ProfileMenu = () => {
       <EditProfileModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} />
       <AccountSettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
       <StarredMessagesModal isOpen={isStarredModalOpen} onClose={() => setIsStarredModalOpen(false)} />
+      <LinkedDevicesModal isOpen={isDevicesModalOpen} onClose={() => setIsDevicesModalOpen(false)} />
     </>
   );
 };

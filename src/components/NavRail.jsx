@@ -1,15 +1,27 @@
-import React from 'react';
-import { MessageSquare, Radar, Phone, Settings, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MessageSquare, Radar, Phone, Settings, Sparkles, Download, Building2, Radio } from 'lucide-react';
 import Tooltip from './ui/Tooltip';
 import ProfileMenu from './ProfileMenu';
 import useStatus from '../hooks/useStatus';
 
-const NavRail = ({ activeTab, setActiveTab, onOpenSettings, showMobileChat }) => {
+const NavRail = ({ activeTab, setActiveTab, onOpenSettings, onOpenCommunities, onOpenChannels, showMobileChat }) => {
   const { contactStatuses } = useStatus();
   const hasUnseenStatus = contactStatuses.some((g) => !g.allViewed);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
 
   const navItems = [
     { id: 'chats', label: 'Chats', icon: MessageSquare },
+    { id: 'channels', label: 'Channels', icon: Radio, isChannel: true },
+    { id: 'communities', label: 'Communities', icon: Building2, isCommunity: true },
     { id: 'status', label: 'Status Stories', icon: Radar, isStatus: true },
     { id: 'calls', label: 'Calls Log', icon: Phone },
   ];
@@ -33,7 +45,15 @@ const NavRail = ({ activeTab, setActiveTab, onOpenSettings, showMobileChat }) =>
               return (
                 <Tooltip key={item.id} content={item.label} position="right">
                   <button
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => {
+                      if (item.isChannel) {
+                        if (onOpenChannels) onOpenChannels();
+                      } else if (item.isCommunity) {
+                        if (onOpenCommunities) onOpenCommunities();
+                      } else {
+                        setActiveTab(item.id);
+                      }
+                    }}
                     className={`relative min-h-[44px] min-w-[44px] p-3 rounded-2xl transition-all duration-200 active:scale-95 group flex items-center justify-center ${
                       isActive
                         ? 'bg-brand-600 text-white shadow-glow-brand'
@@ -66,6 +86,20 @@ const NavRail = ({ activeTab, setActiveTab, onOpenSettings, showMobileChat }) =>
 
         {/* Bottom Actions */}
         <div className="flex flex-col items-center gap-3">
+          {deferredPrompt && (
+            <Tooltip content="Install ChatWave PWA" position="right">
+              <button
+                onClick={() => {
+                  deferredPrompt.prompt();
+                  deferredPrompt.userChoice.then(() => setDeferredPrompt(null));
+                }}
+                className="min-h-[44px] min-w-[44px] p-3 text-emerald-400 hover:text-white bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-2xl transition-all active:scale-95 flex items-center justify-center animate-bounce"
+              >
+                <Download className="w-5 h-5" />
+              </button>
+            </Tooltip>
+          )}
+
           <Tooltip content="Account Settings" position="right">
             <button
               onClick={onOpenSettings}
@@ -88,7 +122,15 @@ const NavRail = ({ activeTab, setActiveTab, onOpenSettings, showMobileChat }) =>
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                if (item.isChannel) {
+                  if (onOpenChannels) onOpenChannels();
+                } else if (item.isCommunity) {
+                  if (onOpenCommunities) onOpenCommunities();
+                } else {
+                  setActiveTab(item.id);
+                }
+              }}
               className={`flex flex-col items-center justify-center flex-1 h-12 rounded-xl transition-all duration-200 active:scale-95 relative ${
                 isActive ? 'text-brand-400 font-bold' : 'text-slate-400 hover:text-slate-200'
               }`}

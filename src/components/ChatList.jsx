@@ -10,6 +10,7 @@ import {
   Command,
   Lock,
   Unlock,
+  Megaphone,
 } from 'lucide-react';
 import useChat from '../hooks/useChat';
 import useSocket from '../hooks/useSocket';
@@ -23,7 +24,7 @@ import Badge from './ui/Badge';
 import EmptyState from './EmptyState';
 import { format, isToday, isYesterday } from 'date-fns';
 
-const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalette }) => {
+const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalette, onOpenBroadcastModal }) => {
   const {
     contacts,
     groups,
@@ -151,6 +152,13 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
               title="Global Search (Cmd+K)"
             >
               <Command className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onOpenBroadcastModal}
+              className="min-h-[44px] min-w-[44px] p-2.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl hover:bg-amber-500/20 transition-colors flex items-center justify-center"
+              title="Broadcast Lists"
+            >
+              <Megaphone className="w-4 h-4" />
             </button>
             <button
               onClick={() => setIsAddContactOpen(true)}

@@ -12,6 +12,10 @@ import CommandPalette from '../components/CommandPalette';
 import BlockedContactsModal from '../components/BlockedContactsModal';
 import TwoStepPinModal from '../components/TwoStepPinModal';
 import AccountSettingsModal from '../components/AccountSettingsModal';
+import BroadcastListModal from '../components/BroadcastListModal';
+import EditProfileModal from '../components/EditProfileModal';
+import CommunitiesModal from '../components/CommunitiesModal';
+import ChannelsModal from '../components/ChannelsModal';
 import useChat from '../hooks/useChat';
 
 const ChatPage = () => {
@@ -23,6 +27,10 @@ const ChatPage = () => {
   const [isBlockedModalOpen, setIsBlockedModalOpen] = useState(false);
   const [isTwoStepModalOpen, setIsTwoStepModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+  const [isCommunitiesModalOpen, setIsCommunitiesModalOpen] = useState(false);
+  const [isChannelsModalOpen, setIsChannelsModalOpen] = useState(false);
 
   // Global Keyboard Shortcuts (Cmd+K / Ctrl+K and Escape)
   useEffect(() => {
@@ -62,6 +70,8 @@ const ChatPage = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
+        onOpenCommunities={() => setIsCommunitiesModalOpen(true)}
+        onOpenChannels={() => setIsChannelsModalOpen(true)}
         showMobileChat={showMobileChat}
       />
 
@@ -79,6 +89,7 @@ const ChatPage = () => {
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+              onOpenBroadcastModal={() => setIsBroadcastModalOpen(true)}
             />
           ) : activeTab === 'status' ? (
             <StatusTab />
@@ -116,6 +127,23 @@ const ChatPage = () => {
       <AccountSettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+        onOpenEditProfile={() => setIsEditProfileModalOpen(true)}
+      />
+      <BroadcastListModal
+        isOpen={isBroadcastModalOpen}
+        onClose={() => setIsBroadcastModalOpen(false)}
+      />
+      <EditProfileModal
+        isOpen={isEditProfileModalOpen}
+        onClose={() => setIsEditProfileModalOpen(false)}
+      />
+      <CommunitiesModal
+        isOpen={isCommunitiesModalOpen}
+        onClose={() => setIsCommunitiesModalOpen(false)}
+      />
+      <ChannelsModal
+        isOpen={isChannelsModalOpen}
+        onClose={() => setIsChannelsModalOpen(false)}
       />
     </div>
   );

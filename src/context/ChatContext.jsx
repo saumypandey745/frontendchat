@@ -476,6 +476,40 @@ export const ChatProvider = ({ children }) => {
       }
     };
 
+    const handleLiveLocationUpdated = ({ messageId, latitude, longitude, address }) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === messageId
+            ? {
+                ...m,
+                locationData: {
+                  ...m.locationData,
+                  latitude,
+                  longitude,
+                  address: address || m.locationData?.address,
+                },
+              }
+            : m
+        )
+      );
+    };
+
+    const handleLiveLocationStopped = ({ messageId }) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === messageId
+            ? {
+                ...m,
+                locationData: {
+                  ...m.locationData,
+                  isEnded: true,
+                },
+              }
+            : m
+        )
+      );
+    };
+
     const handleGroupDeleted = ({ groupId }) => {
       fetchContacts(false);
       if (selectedGroup && selectedGroup._id === groupId) {
@@ -515,11 +549,11 @@ export const ChatProvider = ({ children }) => {
     socket.on('groupUpdated', handleGroupUpdated);
     socket.on('removedFromGroup', handleRemovedFromGroup);
     socket.on('groupDeleted', handleGroupDeleted);
-    socket.on('messageViewOnceOpened', handleViewOnceOpened);
+    socket.on('viewOnceOpened', handleViewOnceOpened);
     socket.on('pollVoted', handlePollVoted);
     socket.on('pollEnded', handlePollEnded);
-    socket.on('groupDeleted', handleGroupDeleted);
-    socket.on('messageViewOnceOpened', handleViewOnceOpened);
+    socket.on('live-location-updated', handleLiveLocationUpdated);
+    socket.on('live-location-stopped', handleLiveLocationStopped);
 
     return () => {
       socket.off('newMessage', handleNewMessage);
@@ -527,7 +561,11 @@ export const ChatProvider = ({ children }) => {
       socket.off('groupUpdated', handleGroupUpdated);
       socket.off('removedFromGroup', handleRemovedFromGroup);
       socket.off('groupDeleted', handleGroupDeleted);
-      socket.off('messageViewOnceOpened', handleViewOnceOpened);
+      socket.off('viewOnceOpened', handleViewOnceOpened);
+      socket.off('pollVoted', handlePollVoted);
+      socket.off('pollEnded', handlePollEnded);
+      socket.off('live-location-updated', handleLiveLocationUpdated);
+      socket.off('live-location-stopped', handleLiveLocationStopped);
     };
   }, [socket, activeChatId, isGroupActive, fetchContacts, user, chatSettings, selectedGroup]);
 

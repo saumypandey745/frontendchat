@@ -298,14 +298,60 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
           ) : message.type === 'audio' && message.fileData?.url ? (
             <WaveformPlayer audioUrl={message.fileData.url} isSender={isSender} />
           ) : message.type === 'location' && message.locationData ? (
-            <div className="space-y-1.5 p-2 bg-black/10 dark:bg-black/30 rounded-2xl">
-              <div className="flex items-center gap-2 font-bold text-xs">
-                <MapPin className="w-4 h-4 text-red-500" />
-                <span>{message.locationData.address}</span>
+            <div className="space-y-2 p-2.5 bg-black/10 dark:bg-black/30 rounded-2xl min-w-[220px]">
+              <div className="flex items-center justify-between gap-2 border-b border-black/10 dark:border-white/10 pb-1.5">
+                <div className="flex items-center gap-2 font-bold text-xs">
+                  <MapPin className={`w-4 h-4 ${message.locationData.isLive && !message.locationData.isEnded ? 'text-red-500 animate-bounce' : 'text-red-500'}`} />
+                  <span className="truncate">{message.locationData.address || 'Location'}</span>
+                </div>
+                {message.locationData.isLive && (
+                  <span
+                    className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1 ${
+                      message.locationData.isEnded
+                        ? 'bg-slate-500/20 text-slate-400'
+                        : 'bg-red-600 text-white animate-pulse'
+                    }`}
+                  >
+                    {!message.locationData.isEnded && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
+                    {message.locationData.isEnded ? 'Ended' : 'LIVE'}
+                  </span>
+                )}
               </div>
-              <p className="text-[10px] opacity-75">
-                Lat: {message.locationData.latitude}, Lng: {message.locationData.longitude}
-              </p>
+
+              {/* Map Coordinates & Live Until Label */}
+              <div className="text-[11px] space-y-1">
+                <p className="opacity-80 font-mono text-[10px]">
+                  Lat: {Number(message.locationData.latitude).toFixed(4)}, Lng: {Number(message.locationData.longitude).toFixed(4)}
+                </p>
+
+                {message.locationData.isLive && (
+                  <div className="flex items-center justify-between text-[10px] pt-1">
+                    {message.locationData.isEnded ? (
+                      <span className="italic text-slate-400 font-semibold">Live location ended</span>
+                    ) : (
+                      <span className="font-semibold text-emerald-400">
+                        Live until {message.locationData.liveExpiresAt ? format(new Date(message.locationData.liveExpiresAt), 'HH:mm') : 'expires soon'}
+                      </span>
+                    )}
+
+                    {isSender && message.locationData.isLive && !message.locationData.isEnded && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await api.post(`/messages/${message._id}/stop-live-location`);
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
+                        className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold shadow transition-all"
+                      >
+                        Stop sharing
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           ) : message.type === 'contact' && message.contactData ? (
             <div className="flex items-center gap-3 p-2 bg-black/10 dark:bg-black/30 rounded-2xl">
@@ -439,13 +485,22 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
           ) : (
             <>
               {message.imageUrl && !message.deletedForEveryone && (
-                <div className="mb-2 overflow-hidden rounded-2xl">
+                <div className={message.isSticker || message.type === 'sticker' ? 'my-1 bg-transparent border-0 shadow-none' : 'mb-2 overflow-hidden rounded-2xl relative'}>
                   <img
                     src={message.imageUrl}
-                    alt="Attachment"
-                    className="max-h-60 w-full object-cover rounded-2xl cursor-pointer hover:opacity-95 transition-opacity"
+                    alt={message.isSticker || message.type === 'sticker' ? 'Sticker' : 'Attachment'}
+                    className={
+                      message.isSticker || message.type === 'sticker'
+                        ? 'w-32 h-32 object-contain hover:scale-105 transition-transform bg-transparent'
+                        : 'max-h-60 w-full object-cover rounded-2xl cursor-pointer hover:opacity-95 transition-opacity'
+                    }
                     onClick={() => window.open(message.imageUrl, '_blank')}
                   />
+                  {(message.isGif || message.type === 'gif') && (
+                    <span className="absolute bottom-2 left-2 bg-black/75 text-white text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                      GIF
+                    </span>
+                  )}
                 </div>
               )}
 

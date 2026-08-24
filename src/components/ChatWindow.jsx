@@ -40,6 +40,9 @@ import ReplyPreview from './ReplyPreview';
 import ForwardModal from './ForwardModal';
 import LocationPickerModal from './LocationPickerModal';
 import ContactShareModal from './ContactShareModal';
+import StickerGifPicker from './StickerGifPicker';
+import CameraCaptureModal from './CameraCaptureModal';
+import ImageEditorModal from './ImageEditorModal';
 import PollModal from './PollModal';
 import AddContactModal from './AddContactModal';
 import GroupInfoPanel from './GroupInfoPanel';
@@ -89,6 +92,9 @@ const ChatWindow = ({ onBackMobile }) => {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
+  const [capturedPhotoUrl, setCapturedPhotoUrl] = useState('');
   const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
   const [showThreeDotMenu, setShowThreeDotMenu] = useState(false);
@@ -641,6 +647,20 @@ const ChatWindow = ({ onBackMobile }) => {
             type="button"
             onClick={() => {
               setShowAttachMenu(false);
+              setIsCameraModalOpen(true);
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors min-h-[44px]"
+          >
+            <div className="p-2 bg-red-500/10 text-red-500 rounded-xl">
+              <Camera className="w-4 h-4" />
+            </div>
+            <span>Camera</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowAttachMenu(false);
               fileInputRef.current?.click();
             }}
             className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors min-h-[44px]"
@@ -709,16 +729,14 @@ const ChatWindow = ({ onBackMobile }) => {
         </div>
       )}
 
-      {/* Emoji Picker Popover */}
-      {showEmojiPicker && (
-        <div className="absolute bottom-20 left-2 sm:left-4 z-30 shadow-glass-lg rounded-3xl animate-pop-in max-w-[calc(100vw-1rem)] overflow-hidden">
-          <EmojiPicker
-            onEmojiClick={(eData) => setText((prev) => prev + eData.emoji)}
-            theme={theme === 'dark' ? 'dark' : 'light'}
-            width="320px"
-          />
-        </div>
-      )}
+      {/* Emoji, Sticker & GIF Picker Popover */}
+      <StickerGifPicker
+        isOpen={showEmojiPicker}
+        onClose={() => setShowEmojiPicker(false)}
+        onSelectEmoji={(emoji) => setText((prev) => prev + emoji)}
+        onSendSticker={(stickerUrl) => sendMessage({ type: 'image', imageUrl: stickerUrl, isSticker: true })}
+        onSendGif={(gifUrl) => sendMessage({ type: 'image', imageUrl: gifUrl, isGif: true })}
+      />
 
       {/* Modals */}
       <ForwardModal isOpen={!!forwardMessageId} onClose={() => setForwardMessageId(null)} messageId={forwardMessageId} />
@@ -749,6 +767,22 @@ const ChatWindow = ({ onBackMobile }) => {
       <MediaGalleryViewer isOpen={isGalleryOpen} onClose={() => setIsGalleryOpen(false)} />
       <WallpaperPickerModal isOpen={isWallpaperModalOpen} onClose={() => setIsWallpaperModalOpen(false)} chatId={activeChatId} />
       <StarredMessagesModal isOpen={isStarredModalOpen} onClose={() => setIsStarredModalOpen(false)} />
+      <CameraCaptureModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onCapture={(dataUrl) => {
+          setCapturedPhotoUrl(dataUrl);
+          setIsEditorModalOpen(true);
+        }}
+      />
+      <ImageEditorModal
+        isOpen={isEditorModalOpen}
+        onClose={() => setIsEditorModalOpen(false)}
+        imageDataUrl={capturedPhotoUrl}
+        onSendEditedImage={async (file) => {
+          await sendMessage({ file, type: 'image' });
+        }}
+      />
     </div>
   );
 };
