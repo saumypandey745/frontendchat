@@ -122,8 +122,16 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
     return true;
   });
 
-  const pinnedConversations = unarchivedConversations.filter((c) => chatSettings[c.id]?.pinned);
-  const regularConversations = unarchivedConversations.filter((c) => !chatSettings[c.id]?.pinned);
+  const sortByRecent = (arr) => {
+    return [...arr].sort((a, b) => {
+      const timeA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
+      const timeB = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+  };
+
+  const pinnedConversations = sortByRecent(unarchivedConversations.filter((c) => chatSettings[c.id]?.pinned));
+  const regularConversations = sortByRecent(unarchivedConversations.filter((c) => !chatSettings[c.id]?.pinned));
 
   const archivedCount = allConversations.filter((c) => chatSettings[c.id]?.archived).length;
 

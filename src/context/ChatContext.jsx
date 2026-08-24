@@ -28,9 +28,9 @@ export const ChatProvider = ({ children }) => {
   const [toastNotification, setToastNotification] = useState(null);
 
   // Fetch contacts and groups
-  const fetchContacts = useCallback(async () => {
+  const fetchContacts = useCallback(async (showLoading = false) => {
     if (!user) return;
-    setLoadingContacts(true);
+    if (showLoading) setLoadingContacts(true);
     try {
       const res = await api.get('/users/contacts');
       if (res.data.success) {
@@ -40,7 +40,7 @@ export const ChatProvider = ({ children }) => {
     } catch (err) {
       console.error('Error fetching contacts & groups:', err);
     } finally {
-      setLoadingContacts(false);
+      if (showLoading) setLoadingContacts(false);
     }
   }, [user]);
 
@@ -63,7 +63,7 @@ export const ChatProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      fetchContacts();
+      fetchContacts(true);
       fetchChatSettings();
     } else {
       setContacts([]);
@@ -451,7 +451,8 @@ export const ChatProvider = ({ children }) => {
         }
       }
 
-      fetchContacts();
+      // Smooth silent fetch without triggering loading skeleton flicker
+      fetchContacts(false);
     };
 
     const handleReaction = ({ messageId, reactions }) => {
@@ -461,14 +462,14 @@ export const ChatProvider = ({ children }) => {
     };
 
     const handleGroupUpdated = (updatedGroup) => {
-      fetchContacts();
+      fetchContacts(false);
       if (selectedGroup && (updatedGroup?._id === selectedGroup._id || updatedGroup?.id === selectedGroup._id)) {
         setSelectedGroup(updatedGroup);
       }
     };
 
     const handleRemovedFromGroup = ({ groupId }) => {
-      fetchContacts();
+      fetchContacts(false);
       if (selectedGroup && selectedGroup._id === groupId) {
         setSelectedGroup(null);
         setMessages([]);
@@ -476,7 +477,7 @@ export const ChatProvider = ({ children }) => {
     };
 
     const handleGroupDeleted = ({ groupId }) => {
-      fetchContacts();
+      fetchContacts(false);
       if (selectedGroup && selectedGroup._id === groupId) {
         setSelectedGroup(null);
         setMessages([]);
