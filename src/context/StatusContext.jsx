@@ -89,13 +89,30 @@ export const StatusProvider = ({ children }) => {
     }
   };
 
+  const reactToStatus = async (statusId, emoji) => {
+    try {
+      const res = await api.post(`/statuses/${statusId}/react`, { emoji });
+      if (res.data?.success) {
+        fetchStatuses();
+        return { success: true, reaction: emoji };
+      }
+    } catch (err) {
+      console.error('React to status error:', err);
+      return { success: false, message: 'Failed to react' };
+    }
+  };
+
   useEffect(() => {
     if (!socket) return;
     socket.on('statusPosted', () => {
       fetchStatuses();
     });
+    socket.on('statusReacted', () => {
+      fetchStatuses();
+    });
     return () => {
       socket.off('statusPosted');
+      socket.off('statusReacted');
     };
   }, [socket, fetchStatuses]);
 
@@ -109,6 +126,7 @@ export const StatusProvider = ({ children }) => {
         fetchStatuses,
         postStatus,
         markStatusViewed,
+        reactToStatus,
         deleteStatus,
         toggleMuteUser,
       }}

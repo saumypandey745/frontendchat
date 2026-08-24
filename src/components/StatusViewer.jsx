@@ -6,18 +6,38 @@ import useChat from '../hooks/useChat';
 
 const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
   const { user: currentUser } = useAuth();
-  const { markStatusViewed, deleteStatus } = useStatus();
+  const { markStatusViewed, deleteStatus, reactToStatus } = useStatus();
   const { selectContact, sendMessage } = useChat();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showViewers, setShowViewers] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [myReaction, setMyReaction] = useState('');
 
   const touchStartY = useRef(0);
 
   const statuses = userStatusGroup?.statuses || [];
   const activeStatus = statuses[currentIndex];
   const isOwner = userStatusGroup?.user?._id === currentUser?._id;
+
+  useEffect(() => {
+    if (activeStatus && currentUser) {
+      const existingView = (activeStatus.viewedBy || []).find(
+        (v) => v.userId?._id?.toString() === currentUser._id?.toString() || v.userId?.toString() === currentUser._id?.toString()
+      );
+      if (existingView?.reaction) {
+        setMyReaction(existingView.reaction);
+      } else {
+        setMyReaction('');
+      }
+    }
+  }, [currentIndex, activeStatus, currentUser]);
+
+  const handleSendReaction = async (emoji) => {
+    if (!activeStatus) return;
+    setMyReaction(emoji);
+    await reactToStatus(activeStatus._id, emoji);
+  };
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -224,8 +244,8 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
           </button>
         </div>
 
-        {/* Footer / Reply or Viewer Count */}
-        <div className="p-4 z-20 bg-gradient-to-t from-slate-950/90 to-transparent pb-[env(safe-area-inset-bottom,1rem)]">
+        {/* Footer / Reply & Quick Reaction Bar or Viewer Count */}
+        <div className="p-4 z-20 bg-gradient-to-t from-slate-950/90 to-transparent pb-[env(safe-area-inset-bottom,1rem)] space-y-3">
           {isOwner ? (
             <button
               onClick={() => setShowViewers(!showViewers)}
@@ -235,45 +255,90 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
               Viewed by {activeStatus?.viewedBy?.length || 0} people
             </button>
           ) : (
-            <form onSubmit={handleReply} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Reply to status..."
-                className="flex-1 px-4 py-3 rounded-2xl bg-slate-800/90 border border-slate-700 text-white text-sm focus:outline-none"
-              />
-              <button
-                type="submit"
-                className="min-h-[44px] min-w-[44px] p-3 bg-brand-600 hover:bg-brand-500 text-white rounded-2xl flex items-center justify-center"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
+            <div className="space-y-2.5">
+              {/* Quick Emoji Reaction Bar */}
+              <div className="flex items-center justify-around px-2 py-1.5 bg-slate-950/80 border border-white/10 rounded-2xl backdrop-blur-md shadow-xl">
+                {['❤️', '😂', '😮', '😢', '🙏', '👏', '🔥', '👍'].map((emoji) => {
+                  const isSelected = myReaction === emoji;
+                  return (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => handleSendReaction(emoji)}
+                      className={`text-lg p-1.5 rounded-xl transition-transform active:scale-125 ${
+                        isSelected
+                          ? 'bg-brand-600/40 border border-brand-500 scale-125 shadow-glow-brand'
+                          : 'hover:scale-125 opacity-85 hover:opacity-100'
+                      }`}
+                      title={`React with ${emoji}`}
+                    >
+                      {emoji}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Reply Input Form */}
+              <form onSubmit={handleReply} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Reply to status..."
+                  className="flex-1 px-4 py-3 rounded-2xl bg-slate-800/90 border border-slate-700 text-white text-sm focus:outline-none placeholder-slate-400"
+                />
+                <button
+                  type="submit"
+                  className="min-h-[44px] min-w-[44px] p-3 bg-brand-600 hover:bg-brand-500 text-white rounded-2xl flex items-center justify-center shadow-md shadow-brand-600/30"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
           )}
         </div>
 
         {/* Viewers List Modal */}
         {showViewers && (
-          <div className="absolute inset-x-0 bottom-0 max-h-64 bg-slate-900 border-t border-slate-800 p-4 rounded-t-3xl z-30 overflow-y-auto animate-fade-in">
+          <div className="absolute inset-x-0 bottom-0 max-h-72 bg-slate-900 border-t border-slate-800 p-4 rounded-t-3xl z-30 overflow-y-auto animate-fade-in shadow-2xl">
             <div className="flex justify-between items-center mb-3">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Status Viewers</h4>
-              <button onClick={() => setShowViewers(false)} className="p-1 text-slate-400">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                Status Viewers ({activeStatus?.viewedBy?.length || 0})
+              </h4>
+              <button onClick={() => setShowViewers(false)} className="p-1 text-slate-400 hover:text-white">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-2">
-              {activeStatus?.viewedBy?.map((v, i) => (
-                <div key={i} className="flex items-center gap-3 p-1.5 text-xs text-slate-300">
-                  <img
-                    src={v.userId?.avatarUrl}
-                    alt={v.userId?.name}
-                    className="w-7 h-7 rounded-full object-cover"
-                  />
-                  <span>{v.userId?.name || 'User'}</span>
-                </div>
-              ))}
+              {activeStatus?.viewedBy?.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-4">No viewers yet</p>
+              ) : (
+                activeStatus?.viewedBy?.map((v, i) => (
+                  <div key={i} className="flex items-center justify-between p-2 rounded-xl bg-slate-800/50 border border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={v.userId?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(v.userId?.name || 'User')}`}
+                        alt={v.userId?.name}
+                        className="w-8 h-8 rounded-full object-cover border border-slate-700"
+                      />
+                      <div>
+                        <h5 className="text-xs font-bold text-slate-200">{v.userId?.name || 'User'}</h5>
+                        <p className="text-[10px] text-slate-400">
+                          {v.viewedAt ? new Date(v.viewedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Viewed'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Display Viewer's Reaction Emoji */}
+                    {v.reaction && (
+                      <span className="text-lg px-2 py-0.5 bg-slate-950/80 border border-slate-700 rounded-full animate-pop-in">
+                        {v.reaction}
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
