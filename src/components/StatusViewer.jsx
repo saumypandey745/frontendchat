@@ -160,7 +160,12 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
         {/* Content Body with Left 1/3 and Right 2/3 Tap Zones */}
         <div
           onClick={handleContentClick}
-          style={{ backgroundColor: activeStatus?.type === 'text' ? activeStatus.backgroundColor : '#0f172a' }}
+          style={{
+            background:
+              activeStatus?.type === 'text'
+                ? activeStatus.backgroundColor || '#6366f1'
+                : '#0f172a',
+          }}
           className="flex-1 flex items-center justify-center p-6 text-center text-white font-bold text-xl relative cursor-pointer select-none"
         >
           {activeStatus?.mediaUrl ? (
@@ -188,7 +193,12 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
               )}
             </div>
           ) : (
-            <p className="whitespace-pre-wrap leading-relaxed">{activeStatus?.content}</p>
+            <p
+              style={{ fontFamily: activeStatus?.font || 'sans-serif' }}
+              className="whitespace-pre-wrap leading-relaxed max-w-full break-words text-2xl sm:text-3xl font-extrabold drop-shadow-md"
+            >
+              {activeStatus?.content}
+            </p>
           )}
 
           {/* Desktop Visual Nav Buttons */}
