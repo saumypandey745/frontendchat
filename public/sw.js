@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chatwave-cache-v1';
+const CACHE_NAME = 'chatwave-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -34,7 +34,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event - Stale-while-revalidate strategy for static assets, network first for API
+// Fetch Event - Network First for HTML/JS, Stale-while-revalidate for static assets
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
@@ -44,10 +44,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network-First strategy for HTML document requests and JS bundles to prevent stale bundle traps
+  if (event.request.headers.get('accept')?.includes('text/html') || url.pathname.endsWith('.js')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) return cachedResponse;
+            if (event.request.headers.get('accept')?.includes('text/html')) {
+              return caches.match('/index.html');
+            }
+          });
+        })
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch background update for cache
         fetch(event.request)
           .then((networkResponse) => {
             if (networkResponse && networkResponse.status === 200) {
@@ -66,7 +88,6 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
         return networkResponse;
       }).catch(() => {
-        // Offline Fallback to cached index.html
         if (event.request.headers.get('accept')?.includes('text/html')) {
           return caches.match('/index.html');
         }
