@@ -93,9 +93,10 @@ const StatusPrivacyModal = ({ isOpen, onClose }) => {
     setSelectedExceptions(nextExceptions);
   };
 
-  const filteredContacts = contacts.filter((c) =>
-    c.name.toLowerCase().includes(pickerSearch.toLowerCase())
-  );
+  const filteredContacts = (contacts || []).filter((c) => {
+    const contactName = c?.nickname || c?.name || c?.user?.name || c?.email || c?.user?.email || '';
+    return contactName.toLowerCase().includes((pickerSearch || '').toLowerCase());
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
@@ -288,11 +289,16 @@ const StatusPrivacyModal = ({ isOpen, onClose }) => {
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
               {filteredContacts.map((contact) => {
-                const isSelected = selectedExceptions.includes(contact._id);
+                const cId = contact._id || contact.user?._id || contact.id;
+                const cName = contact.nickname || contact.name || contact.user?.name || 'Contact';
+                const cAvatar = contact.avatarUrl || contact.user?.avatarUrl || '';
+                const cSubtext = contact.chatwaveId || contact.email || contact.user?.email || '';
+                const isSelected = selectedExceptions.includes(cId);
+
                 return (
                   <div
-                    key={contact._id}
-                    onClick={() => toggleExceptionUser(contact._id)}
+                    key={cId}
+                    onClick={() => toggleExceptionUser(cId)}
                     className={`p-3 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
                       isSelected
                         ? 'bg-brand-50/60 dark:bg-brand-950/30 border-brand-500'
@@ -301,15 +307,15 @@ const StatusPrivacyModal = ({ isOpen, onClose }) => {
                   >
                     <div className="flex items-center gap-3">
                       <img
-                        src={contact.avatarUrl}
-                        alt={contact.name}
+                        src={cAvatar}
+                        alt={cName}
                         className="w-9 h-9 rounded-full object-cover"
                       />
                       <div>
                         <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                          {contact.nickname || contact.name}
+                          {cName}
                         </h5>
-                        <p className="text-[10px] text-slate-500">{contact.chatwaveId || contact.email}</p>
+                        <p className="text-[10px] text-slate-500">{cSubtext}</p>
                       </div>
                     </div>
 

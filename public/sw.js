@@ -39,6 +39,9 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
+  // Bypass chrome-extension:// and non-http(s) schemes
+  if (!url.protocol.startsWith('http')) return;
+
   // Bypass API requests & WebSocket calls from caching
   if (url.pathname.startsWith('/api') || url.pathname.startsWith('/socket.io')) {
     return;
