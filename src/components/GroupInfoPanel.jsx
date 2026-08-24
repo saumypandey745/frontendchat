@@ -40,7 +40,7 @@ const GroupInfoPanel = ({
   onOpenWallpaper,
 }) => {
   const { user } = useAuth();
-  const { messages, chatSettings, updateChatSetting, fetchContacts } = useChat();
+  const { messages, chatSettings, updateChatSetting, fetchContacts, updateGroupData } = useChat();
 
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(group?.name || '');
@@ -80,6 +80,12 @@ const GroupInfoPanel = ({
       (m.imageUrl || m.fileData?.url || m.type === 'image' || m.type === 'video' || m.type === 'document')
   ).length;
 
+  const getErrorMessage = (err, fallback) => {
+    if (err.response?.status === 401) return 'Session expired, please log in again.';
+    if (err.response?.status === 403) return err.response?.data?.message || 'Action forbidden.';
+    return err.response?.data?.message || err.message || fallback;
+  };
+
   const handleUpdateInfo = async () => {
     setSaving(true);
     try {
@@ -93,11 +99,12 @@ const GroupInfoPanel = ({
       });
 
       if (res.data.success) {
-        fetchContacts();
+        if (res.data.group) updateGroupData(res.data.group);
+        fetchContacts(false);
         setIsEditing(false);
       }
     } catch (e) {
-      alert(e.response?.data?.message || 'Update failed');
+      alert(getErrorMessage(e, 'Update failed'));
     } finally {
       setSaving(false);
     }
@@ -106,40 +113,46 @@ const GroupInfoPanel = ({
   const handleToggleAdmin = async (targetUserId, currentRole) => {
     const newRole = currentRole === 'admin' ? 'member' : 'admin';
     try {
-      await api.put(`/groups/${group._id}/members/${targetUserId}/role`, { role: newRole });
-      fetchContacts();
+      const res = await api.put(`/groups/${group._id}/members/${targetUserId}/role`, { role: newRole });
+      if (res.data.success) {
+        if (res.data.group) updateGroupData(res.data.group);
+        fetchContacts(false);
+      }
     } catch (e) {
-      alert(e.response?.data?.message || 'Role change failed');
+      alert(getErrorMessage(e, 'Role change failed'));
     }
   };
 
   const handleRemoveMember = async (targetUserId) => {
     if (!confirm('Remove member from group?')) return;
     try {
-      await api.delete(`/groups/${group._id}/members/${targetUserId}`);
-      fetchContacts();
+      const res = await api.delete(`/groups/${group._id}/members/${targetUserId}`);
+      if (res.data.success) {
+        if (res.data.group) updateGroupData(res.data.group);
+        fetchContacts(false);
+      }
     } catch (e) {
-      alert(e.response?.data?.message || 'Remove member failed');
+      alert(getErrorMessage(e, 'Remove member failed'));
     }
   };
 
   const handleLeaveGroup = async () => {
     try {
       await api.post(`/groups/${group._id}/leave`);
-      fetchContacts();
+      fetchContacts(false);
       onClose();
     } catch (e) {
-      alert(e.response?.data?.message || 'Leave group failed');
+      alert(getErrorMessage(e, 'Leave group failed'));
     }
   };
 
   const handleDeleteGroup = async () => {
     try {
       await api.delete(`/groups/${group._id}`);
-      fetchContacts();
+      fetchContacts(false);
       onClose();
     } catch (e) {
-      alert(e.response?.data?.message || 'Delete group failed');
+      alert(getErrorMessage(e, 'Delete group failed'));
     }
   };
 
@@ -166,7 +179,7 @@ const GroupInfoPanel = ({
       link.click();
       link.remove();
     } catch (err) {
-      alert('Failed to export group chat backup.');
+      alert(getErrorMessage(err, 'Failed to export group chat backup.'));
     }
   };
 
@@ -179,7 +192,7 @@ const GroupInfoPanel = ({
         alert(`Report submitted for group "${group.name}". Thank you for keeping ChatWave safe.`);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Report failed.');
+      alert(getErrorMessage(err, 'Report failed.'));
     }
   };
 
@@ -189,10 +202,11 @@ const GroupInfoPanel = ({
         requiresAdminApproval: !group.requiresAdminApproval,
       });
       if (res.data.success) {
-        fetchContacts();
+        if (res.data.group) updateGroupData(res.data.group);
+        fetchContacts(false);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update approval setting');
+      alert(getErrorMessage(err, 'Failed to update approval setting'));
     }
   };
 
@@ -203,10 +217,11 @@ const GroupInfoPanel = ({
         editGroupInfo: editGroupInfo || group.permissions?.editGroupInfo || 'everyone',
       });
       if (res.data.success) {
-        fetchContacts();
+        if (res.data.group) updateGroupData(res.data.group);
+        fetchContacts(false);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update group permissions');
+      alert(getErrorMessage(err, 'Failed to update group permissions'));
     }
   };
 

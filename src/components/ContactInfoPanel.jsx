@@ -54,6 +54,13 @@ const ContactInfoPanel = ({
   const [showAddContactModal, setShowAddContactModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const getErrorMessage = (err, fallback) => {
+    if (err.response?.status === 401) return 'Session expired, please log in again.';
+    if (err.response?.status === 403) return err.response?.data?.message || 'Action forbidden.';
+    if (err.response?.status === 404) return err.response?.data?.message || 'Resource not found.';
+    return err.response?.data?.message || err.message || fallback;
+  };
+
   const handleClearChat = async () => {
     setActionLoading(true);
     try {
@@ -63,7 +70,7 @@ const ContactInfoPanel = ({
         setShowClearConfirm(false);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to clear chat');
+      alert(getErrorMessage(err, 'Failed to clear chat'));
     } finally {
       setActionLoading(false);
     }
@@ -74,13 +81,13 @@ const ContactInfoPanel = ({
     try {
       const res = await api.delete(`/messages/chat/${contact._id}`);
       if (res.data.success) {
-        await fetchContacts();
+        await fetchContacts(false);
         selectContact(null);
         setShowDeleteConfirm(false);
         onClose();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete chat');
+      alert(getErrorMessage(err, 'Failed to delete chat'));
     } finally {
       setActionLoading(false);
     }
@@ -116,11 +123,11 @@ const ContactInfoPanel = ({
           const updatedBlocked = res.data.blockedUsers || [];
           setUser({ ...user, blockedUsers: updatedBlocked });
         }
-        fetchContacts();
+        fetchContacts(false);
       }
     } catch (err) {
       console.error('Error toggling block state:', err);
-      alert(err.response?.data?.message || 'Failed to update block status');
+      alert(getErrorMessage(err, 'Failed to update block status'));
     } finally {
       setLoadingBlock(false);
       setShowBlockConfirm(false);
@@ -150,7 +157,7 @@ const ContactInfoPanel = ({
       link.click();
       link.remove();
     } catch (err) {
-      alert('Failed to export chat history.');
+      alert(getErrorMessage(err, 'Failed to export chat history.'));
     }
   };
 
@@ -164,7 +171,7 @@ const ContactInfoPanel = ({
         alert(`Report submitted for ${contact.name}. Thank you for keeping ChatWave safe.`);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to submit report.');
+      alert(getErrorMessage(err, 'Failed to submit report.'));
     } finally {
       setLoadingReport(false);
     }

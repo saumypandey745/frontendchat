@@ -531,6 +531,15 @@ export const ChatProvider = ({ children }) => {
     };
   }, [socket, activeChatId, isGroupActive, fetchContacts, user, chatSettings, selectedGroup]);
 
+  // Update group data in local React state instantly
+  const updateGroupData = useCallback((updatedGroup) => {
+    if (!updatedGroup || !updatedGroup._id) return;
+    setGroups((prev) =>
+      prev.map((g) => (g.group._id === updatedGroup._id ? { ...g, group: updatedGroup } : g))
+    );
+    setSelectedGroup((prev) => (prev?._id === updatedGroup._id ? updatedGroup : prev));
+  }, []);
+
   return (
     <ChatContext.Provider
       value={{
@@ -540,6 +549,8 @@ export const ChatProvider = ({ children }) => {
         fetchContacts,
         selectedUser,
         selectedGroup,
+        setSelectedGroup,
+        updateGroupData,
         selectContact,
         selectGroup,
         activeChatId,
