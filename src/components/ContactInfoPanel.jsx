@@ -112,10 +112,10 @@ const ContactInfoPanel = ({
   ).length;
 
   const handleToggleBlock = async () => {
+    setShowBlockConfirm(false);
     setLoadingBlock(true);
     const res = await toggleBlockUser(contact._id);
     setLoadingBlock(false);
-    setShowBlockConfirm(false);
     if (res?.success) {
       fetchContacts(false);
     } else if (res?.message) {

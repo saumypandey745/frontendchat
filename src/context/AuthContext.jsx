@@ -276,8 +276,16 @@ export const AuthProvider = ({ children }) => {
       const res = await api.post(endpoint);
 
       if (res.data?.success) {
-        const serverBlockedUsers = res.data.blockedUsers || optimisticBlockedUsers;
-        setUser((prevUser) => (prevUser ? { ...prevUser, blockedUsers: serverBlockedUsers } : prevUser));
+        const serverBlockedUsers = res.data.blockedUsers;
+        if (serverBlockedUsers && Array.isArray(serverBlockedUsers)) {
+          setUser((prevUser) => {
+            if (!prevUser) return prevUser;
+            const prevIds = (prevUser.blockedUsers || []).map((id) => (id._id || id).toString()).sort().join(',');
+            const newIds = serverBlockedUsers.map((id) => (id._id || id).toString()).sort().join(',');
+            if (prevIds === newIds) return prevUser; // Prevent redundant re-render blink
+            return { ...prevUser, blockedUsers: serverBlockedUsers };
+          });
+        }
         return { success: true, isBlocked: !currentlyBlocked, message: res.data.message };
       } else {
         // Rollback on non-success
