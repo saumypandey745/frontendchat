@@ -16,6 +16,13 @@ import {
   Smile,
   X,
   Check as SaveCheck,
+  Info,
+  Flame,
+  Eye,
+  BarChart2,
+  CheckSquare,
+  Square,
+  CheckCircle2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import useAuth from '../hooks/useAuth';
@@ -24,10 +31,12 @@ import WaveformPlayer from './WaveformPlayer';
 import LinkPreviewCard from './LinkPreviewCard';
 import ReactionPicker from './ReactionPicker';
 import Tooltip from './ui/Tooltip';
+import MessageInfoModal from './MessageInfoModal';
+import ViewOnceViewerModal from './ViewOnceViewerModal';
 
 const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
   const { user } = useAuth();
-  const { editMessage, deleteMessage, toggleStarMessage, setReplyingToMessage } = useChat();
+  const { editMessage, deleteMessage, toggleStarMessage, setReplyingToMessage, votePoll, endPoll } = useChat();
 
   const isSender = message.senderId === user?._id || message.senderId?._id === user?._id;
   const isStarred = message.starredBy?.includes(user?._id);
@@ -36,6 +45,8 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showViewOnceModal, setShowViewOnceModal] = useState(false);
 
   const menuRef = useRef(null);
 
@@ -201,6 +212,19 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
                 {isSender && (
                   <button
                     type="button"
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowInfoModal(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <Info className="w-3.5 h-3.5 text-indigo-500" /> Info
+                  </button>
+                )}
+
+                {isSender && (
+                  <button
+                    type="button"
                     onClick={() => handleDelete(true)}
                     className="w-full flex items-center gap-2 px-3.5 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                   >
@@ -243,7 +267,25 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
           )}
 
           {/* Special Type Rendering */}
-          {message.type === 'video' || (message.fileData?.mimeType && message.fileData.mimeType.startsWith('video/')) ? (
+          {message.isViewOnce ? (
+            <div className="py-1">
+              {message.viewOnceState === 'opened' ? (
+                <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-black/10 dark:bg-black/30 text-xs font-semibold text-slate-400 border border-slate-200/40 dark:border-slate-700/40">
+                  <Flame className="w-4 h-4 text-slate-400" />
+                  <span>Opened</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowViewOnceModal(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500/20 text-amber-500 font-bold text-xs hover:bg-amber-500/30 active:scale-95 transition-all border border-amber-500/40 shadow-sm"
+                >
+                  <Flame className="w-4 h-4 fill-amber-500 animate-pulse" />
+                  <span>🔥 View once photo</span>
+                </button>
+              )}
+            </div>
+          ) : message.type === 'video' || (message.fileData?.mimeType && message.fileData.mimeType.startsWith('video/')) ? (
             <div className="space-y-2">
               <video
                 controls
@@ -291,6 +333,99 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
               >
                 Download
               </a>
+            </div>
+          ) : message.type === 'poll' && message.poll ? (
+            <div className="space-y-3 min-w-[240px] max-w-sm">
+              <div className="flex items-center justify-between gap-2 border-b border-black/10 dark:border-white/10 pb-2">
+                <div className="flex items-center gap-1.5 font-bold text-xs">
+                  <BarChart2 className="w-4 h-4 text-brand-400" />
+                  <span className="truncate">{message.poll.question}</span>
+                </div>
+                {message.poll.endedAt ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-400 font-bold">
+                    Ended
+                  </span>
+                ) : (
+                  <span className="text-[10px] opacity-75">
+                    {message.poll.allowMultiple ? 'Select multiple' : 'Select one'}
+                  </span>
+                )}
+              </div>
+
+              {/* Poll Options */}
+              <div className="space-y-2">
+                {(() => {
+                  const totalVotes = message.poll.options.reduce(
+                    (acc, opt) => acc + (opt.votes?.length || 0),
+                    0
+                  );
+
+                  return message.poll.options.map((opt, idx) => {
+                    const votesCount = opt.votes?.length || 0;
+                    const percentage = totalVotes > 0 ? Math.round((votesCount / totalVotes) * 100) : 0;
+                    const hasVoted = opt.votes?.some(
+                      (v) => (v._id || v).toString() === user?._id?.toString()
+                    );
+
+                    return (
+                      <button
+                        key={idx}
+                        disabled={Boolean(message.poll.endedAt)}
+                        onClick={() => votePoll(message._id, [idx])}
+                        className={`w-full relative overflow-hidden p-2.5 rounded-2xl border text-left transition-all ${
+                          hasVoted
+                            ? 'border-brand-500 bg-brand-500/10 font-bold'
+                            : 'border-slate-300/40 dark:border-slate-700/40 bg-black/5 dark:bg-black/20 hover:bg-black/10'
+                        } ${message.poll.endedAt ? 'cursor-not-allowed opacity-90' : ''}`}
+                      >
+                        {/* Progress Fill Bar */}
+                        <div
+                          className="absolute left-0 top-0 bottom-0 bg-brand-500/20 transition-all duration-300 rounded-2xl"
+                          style={{ width: `${percentage}%` }}
+                        />
+
+                        <div className="relative flex items-center justify-between text-xs gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {message.poll.allowMultiple ? (
+                              hasVoted ? (
+                                <CheckSquare className="w-4 h-4 text-brand-500 flex-shrink-0" />
+                              ) : (
+                                <Square className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                              )
+                            ) : hasVoted ? (
+                              <CheckCircle2 className="w-4 h-4 text-brand-500 flex-shrink-0" />
+                            ) : (
+                              <div className="w-4 h-4 rounded-full border border-slate-400 flex-shrink-0" />
+                            )}
+                            <span className="truncate">{opt.text}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-shrink-0 text-[10px] font-mono">
+                            <span className="font-bold">{votesCount}</span>
+                            <span className="opacity-75">({percentage}%)</span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* Poll Footer */}
+              <div className="flex items-center justify-between text-[10px] opacity-75 pt-1">
+                <span>
+                  {message.poll.options.reduce((acc, opt) => acc + (opt.votes?.length || 0), 0)} total votes
+                </span>
+
+                {isSender && !message.poll.endedAt && (
+                  <button
+                    onClick={() => endPoll(message._id)}
+                    className="font-bold text-red-400 hover:underline"
+                  >
+                    End Poll
+                  </button>
+                )}
+              </div>
             </div>
           ) : message.type === 'call-log' && message.callLog ? (
             <div className="flex items-center gap-2 text-xs font-semibold">
@@ -380,6 +515,14 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      {showInfoModal && (
+        <MessageInfoModal messageId={message._id} onClose={() => setShowInfoModal(false)} />
+      )}
+      {showViewOnceModal && (
+        <ViewOnceViewerModal message={message} onClose={() => setShowViewOnceModal(false)} />
+      )}
     </div>
   );
 };

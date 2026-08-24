@@ -173,7 +173,7 @@ export const ChatProvider = ({ children }) => {
   }, [activeChatId, hasMore, loadingMessages, page, isGroupActive, fetchMessages]);
 
   // Send Message
-  const sendMessage = async ({ text, file, type, locationData, contactData, mentions }) => {
+  const sendMessage = async ({ text, file, type, locationData, contactData, mentions, isViewOnce }) => {
     if (!activeChatId) return;
 
     try {
@@ -194,6 +194,9 @@ export const ChatProvider = ({ children }) => {
       }
       if (contactData) {
         formData.append('contactData', JSON.stringify(contactData));
+      }
+      if (isViewOnce) {
+        formData.append('isViewOnce', 'true');
       }
 
       const res = await api.post(`/messages/${activeChatId}`, formData, {
@@ -316,6 +319,93 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
+  // Toggle Chat Lock with PIN
+  const toggleChatLock = async (chatId, isLocked, pin) => {
+    try {
+      const res = await api.post(`/chat-settings/${chatId}/lock`, { isLocked, pin });
+      if (res.data.success) {
+        setChatSettings((prev) => ({
+          ...prev,
+          [chatId]: { ...(prev[chatId] || {}), isLocked: res.data.isLocked },
+        }));
+        return { success: true, message: res.data.message };
+      }
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to toggle chat lock' };
+    }
+  };
+
+  // Verify PIN for Chat Lock
+  const verifyChatPin = async (chatId, pin) => {
+    try {
+      const res = await api.post(`/chat-settings/${chatId}/verify-pin`, { pin });
+      if (res.data.success) {
+        return { success: true };
+      }
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Invalid PIN' };
+    }
+  };
+
+  // Open View-Once Media
+  const openViewOnceMedia = async (messageId) => {
+    try {
+      const res = await api.post(`/messages/${messageId}/view-once`);
+      if (res.data.success) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m._id === messageId ? { ...m, viewOnceState: 'opened', imageUrl: '', fileData: m.fileData ? { ...m.fileData, url: '' } : null } : m
+          )
+        );
+        return { success: true };
+      }
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to open media' };
+    }
+  };
+
+  // Fetch Message Info
+  const fetchMessageInfo = async (messageId) => {
+    try {
+      const res = await api.get(`/messages/info/${messageId}`);
+      if (res.data.success) {
+        return { success: true, messageInfo: res.data.messageInfo };
+      }
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to fetch message info' };
+    }
+  };
+
+  // Vote on Poll Option
+  const votePoll = async (messageId, optionIndexes) => {
+    try {
+      const res = await api.post(`/messages/${messageId}/poll-vote`, { optionIndexes });
+      if (res.data.success) {
+        setMessages((prev) =>
+          prev.map((m) => (m._id === messageId ? { ...m, poll: res.data.poll } : m))
+        );
+        return { success: true, poll: res.data.poll };
+      }
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to submit vote' };
+    }
+  };
+
+  // End Poll
+  const endPoll = async (messageId) => {
+    try {
+      const res = await api.post(`/messages/${messageId}/poll-end`);
+      if (res.data.success) {
+        setMessages((prev) =>
+          prev.map((m) => (m._id === messageId ? { ...m, poll: res.data.poll } : m))
+        );
+        return { success: true, poll: res.data.poll };
+      }
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to end poll' };
+    }
+  };
+
   // Send typing status
   const sendTypingStatus = (isTyping) => {
     if (!socket || !activeChatId) return;
@@ -337,28 +427,22 @@ export const ChatProvider = ({ children }) => {
       const currentChatId = String(activeChatId || '');
 
       const isForActiveChat =
-        // Group message for the currently open group
         (isGroupActive && newMsg.chatId === currentChatId) ||
-        // 1-on-1: incoming — the OTHER person sent this message to us
         (!isGroupActive && msgSenderId === currentChatId) ||
-        // 1-on-1: outgoing — WE sent this message to the currently open chat
         (!isGroupActive && msgReceiverId === currentChatId && msgSenderId === currentUserId);
 
       if (isForActiveChat) {
         setMessages((prev) => {
-          // Avoid duplicates (server may echo back what the sender already appended optimistically)
           const alreadyExists = prev.some((m) => m._id && m._id === newMsg._id);
           if (alreadyExists) return prev;
           return [...prev, newMsg];
         });
       } else if (msgSenderId !== currentUserId) {
-        // Check if this chat is muted before showing toast
         const targetChatId = newMsg.isGroup ? newMsg.chatId : msgSenderId;
         const targetSettings = chatSettings[targetChatId];
         const isMuted = targetSettings?.muted && (!targetSettings?.mutedUntil || new Date(targetSettings.mutedUntil) > new Date());
 
         if (!isMuted) {
-          // Only toast for messages FROM someone else (never for our own sent messages or muted chats)
           setToastNotification({
             id: Date.now(),
             senderId: msgSenderId,
@@ -399,11 +483,42 @@ export const ChatProvider = ({ children }) => {
       }
     };
 
+    const handleViewOnceOpened = ({ messageId, viewOnceState }) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === messageId
+            ? { ...m, viewOnceState: 'opened', imageUrl: '', fileData: m.fileData ? { ...m.fileData, url: '' } : null }
+            : m
+        )
+      );
+    };
+
+    const handlePollVoted = ({ messageId, poll }) => {
+      setMessages((prev) =>
+        prev.map((m) => (m._id === messageId ? { ...m, poll } : m))
+      );
+    };
+
+    const handlePollEnded = ({ messageId, endedAt }) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === messageId && m.poll
+            ? { ...m, poll: { ...m.poll, endedAt } }
+            : m
+        )
+      );
+    };
+
     socket.on('newMessage', handleNewMessage);
     socket.on('messageReaction', handleReaction);
     socket.on('groupUpdated', handleGroupUpdated);
     socket.on('removedFromGroup', handleRemovedFromGroup);
     socket.on('groupDeleted', handleGroupDeleted);
+    socket.on('messageViewOnceOpened', handleViewOnceOpened);
+    socket.on('pollVoted', handlePollVoted);
+    socket.on('pollEnded', handlePollEnded);
+    socket.on('groupDeleted', handleGroupDeleted);
+    socket.on('messageViewOnceOpened', handleViewOnceOpened);
 
     return () => {
       socket.off('newMessage', handleNewMessage);
@@ -411,6 +526,7 @@ export const ChatProvider = ({ children }) => {
       socket.off('groupUpdated', handleGroupUpdated);
       socket.off('removedFromGroup', handleRemovedFromGroup);
       socket.off('groupDeleted', handleGroupDeleted);
+      socket.off('messageViewOnceOpened', handleViewOnceOpened);
     };
   }, [socket, activeChatId, isGroupActive, fetchContacts, user, chatSettings, selectedGroup]);
 
@@ -441,6 +557,12 @@ export const ChatProvider = ({ children }) => {
         setReplyingToMessage,
         chatSettings,
         updateChatSetting,
+        toggleChatLock,
+        verifyChatPin,
+        openViewOnceMedia,
+        fetchMessageInfo,
+        votePoll,
+        endPoll,
         sendTypingStatus,
         typingUsers,
         toastNotification,

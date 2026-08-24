@@ -8,12 +8,16 @@ import {
   Archive,
   UserPlus,
   Command,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import useChat from '../hooks/useChat';
 import useSocket from '../hooks/useSocket';
 import api from '../lib/axios';
 import CreateGroupModal from './CreateGroupModal';
 import ArchivedChatsModal from './ArchivedChatsModal';
+import ChatLockModal from './ChatLockModal';
+import AddContactModal from './AddContactModal';
 import Skeleton from './ui/Skeleton';
 import Badge from './ui/Badge';
 import EmptyState from './EmptyState';
@@ -24,21 +28,24 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
     contacts,
     groups,
     loadingContacts,
-    selectedUser,
-    selectedGroup,
     selectContact,
     selectGroup,
-    chatSettings,
+    selectedUser,
+    selectedGroup,
     typingUsers,
+    onlineUsers,
+    chatSettings,
   } = useChat();
-
-  const { onlineUsers } = useSocket();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isArchivedModalOpen, setIsArchivedModalOpen] = useState(false);
+  const [isLockedFolderUnlocked, setIsLockedFolderUnlocked] = useState(false);
+  const [showUnlockFolderModal, setShowUnlockFolderModal] = useState(false);
+  const [unlockTargetChatId, setUnlockTargetChatId] = useState(null);
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -65,12 +72,22 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
   }, [searchQuery]);
 
   const handleSelectUser = (user) => {
+    if (chatSettings[user._id]?.isLocked && !isLockedFolderUnlocked) {
+      setUnlockTargetChatId(user._id);
+      setShowUnlockFolderModal(true);
+      return;
+    }
     selectContact(user);
     setSearchQuery('');
     if (onSelectMobile) onSelectMobile();
   };
 
   const handleSelectGroup = (group) => {
+    if (chatSettings[group._id]?.isLocked && !isLockedFolderUnlocked) {
+      setUnlockTargetChatId(group._id);
+      setShowUnlockFolderModal(true);
+      return;
+    }
     selectGroup(group);
     setSearchQuery('');
     if (onSelectMobile) onSelectMobile();
@@ -95,7 +112,15 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
     })),
   ];
 
-  const unarchivedConversations = allConversations.filter((c) => !chatSettings[c.id]?.archived);
+  const lockedConversations = allConversations.filter((c) => chatSettings[c.id]?.isLocked);
+  const lockedCount = lockedConversations.length;
+
+  const unarchivedConversations = allConversations.filter((c) => {
+    if (chatSettings[c.id]?.archived) return false;
+    if (chatSettings[c.id]?.isLocked && !isLockedFolderUnlocked) return false;
+    return true;
+  });
+
   const pinnedConversations = unarchivedConversations.filter((c) => chatSettings[c.id]?.pinned);
   const regularConversations = unarchivedConversations.filter((c) => !chatSettings[c.id]?.pinned);
 
@@ -119,8 +144,15 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
               <Command className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setIsGroupModalOpen(true)}
+              onClick={() => setIsAddContactOpen(true)}
               className="min-h-[44px] min-w-[44px] p-2.5 bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-xl hover:bg-brand-500/20 transition-colors flex items-center justify-center"
+              title="Add Contact by ID"
+            >
+              <UserPlus className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setIsGroupModalOpen(true)}
+              className="min-h-[44px] min-w-[44px] p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center"
               title="New Group Chat"
             >
               <Users className="w-4 h-4" />
@@ -140,6 +172,32 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
           />
         </div>
       </div>
+
+      {/* Locked Chats Folder Pill */}
+      {lockedCount > 0 && searchQuery.trim() === '' && (
+        <button
+          onClick={() => {
+            if (isLockedFolderUnlocked) {
+              setIsLockedFolderUnlocked(false);
+            } else {
+              setUnlockTargetChatId(null);
+              setShowUnlockFolderModal(true);
+            }
+          }}
+          className="px-4 py-2.5 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors bg-slate-50/50 dark:bg-slate-900/50"
+        >
+          <div className="flex items-center gap-2.5">
+            <Lock className="w-4 h-4 text-brand-500" />
+            <span>Locked Chats</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Badge variant="brand">{lockedCount}</Badge>
+            <span className="text-[10px] text-slate-400">
+              {isLockedFolderUnlocked ? 'Unlocked 🔓' : 'Locked 🔒'}
+            </span>
+          </div>
+        </button>
+      )}
 
       {/* Archived Section Pill */}
       {archivedCount > 0 && searchQuery.trim() === '' && (
@@ -212,7 +270,23 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
       </div>
 
       <CreateGroupModal isOpen={isGroupModalOpen} onClose={() => setIsGroupModalOpen(false)} />
+      <AddContactModal isOpen={isAddContactOpen} onClose={() => setIsAddContactOpen(false)} />
       <ArchivedChatsModal isOpen={isArchivedModalOpen} onClose={() => setIsArchivedModalOpen(false)} />
+      {showUnlockFolderModal && (
+        <ChatLockModal
+          chatId={unlockTargetChatId || (lockedConversations[0]?.id)}
+          isCurrentlyLocked={true}
+          onClose={() => {
+            setShowUnlockFolderModal(false);
+            setUnlockTargetChatId(null);
+          }}
+          onLockStateChanged={(unlockedState) => {
+            if (!unlockedState) {
+              setIsLockedFolderUnlocked(true);
+            }
+          }}
+        />
+      )}
     </div>
   );
 
@@ -264,6 +338,7 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
               <span className="truncate">{item.user.name}</span>
             </h4>
             <div className="flex items-center gap-1 flex-shrink-0 text-[10px] font-semibold text-slate-400">
+              {settings.isLocked && <Lock className="w-3 h-3 text-brand-500 fill-brand-500" />}
               {settings.pinned && <Pin className="w-3 h-3 text-brand-500 fill-brand-500" />}
               {isDisappearing && <Clock className="w-3 h-3 text-emerald-500" />}
               {isMuted && <VolumeX className="w-3 h-3 text-slate-400" />}
@@ -274,6 +349,8 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
           <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
             {isTyping ? (
               <span className="text-brand-500 font-bold animate-pulse">typing...</span>
+            ) : settings.isLocked && !isLockedFolderUnlocked ? (
+              <span className="italic text-slate-400">🔒 Locked Chat</span>
             ) : (
               item.lastMessage?.text || (item.lastMessage?.imageUrl ? '📷 Attachment' : 'No messages')
             )}

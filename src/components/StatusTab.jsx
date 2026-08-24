@@ -62,7 +62,9 @@ const StatusTab = () => {
             <div className="min-w-0 flex-1">
               <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">My Status</h4>
               <p className="text-[11px] text-slate-400 truncate">
-                {myStatus ? `${myStatus.statuses.length} status updates` : 'Tap to add status update'}
+                {myStatus
+                  ? `${myStatus.statuses.length} status update${myStatus.statuses.length === 1 ? '' : 's'}`
+                  : 'Tap to add status update'}
               </p>
             </div>
           </div>
@@ -100,7 +102,9 @@ const StatusTab = () => {
                   <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
                     {group.user.name}
                   </h4>
-                  <p className="text-[11px] text-slate-400 truncate">{group.statuses.length} status updates</p>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    {group.statuses.length} status update{group.statuses.length === 1 ? '' : 's'}
+                  </p>
                 </div>
               </div>
             ))

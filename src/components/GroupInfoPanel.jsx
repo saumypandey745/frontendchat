@@ -18,6 +18,9 @@ import {
   UserPlus,
   Camera,
   Lock,
+  Link,
+  UserCheck,
+  ShieldAlert,
 } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 import useChat from '../hooks/useChat';
@@ -25,6 +28,9 @@ import api from '../lib/axios';
 import Badge from './ui/Badge';
 import Button from './ui/Button';
 import AddMemberModal from './AddMemberModal';
+import ChatLockModal from './ChatLockModal';
+import GroupInviteLinkModal from './GroupInviteLinkModal';
+import GroupPendingMembersModal from './GroupPendingMembersModal';
 
 const GroupInfoPanel = ({
   isOpen,
@@ -46,6 +52,9 @@ const GroupInfoPanel = ({
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showLockModal, setShowLockModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showPendingModal, setShowPendingModal] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -171,6 +180,33 @@ const GroupInfoPanel = ({
       }
     } catch (err) {
       alert(err.response?.data?.message || 'Report failed.');
+    }
+  };
+
+  const handleApprovalToggle = async () => {
+    try {
+      const res = await api.put(`/groups/${group._id}/approval-setting`, {
+        requiresAdminApproval: !group.requiresAdminApproval,
+      });
+      if (res.data.success) {
+        fetchContacts();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update approval setting');
+    }
+  };
+
+  const handlePermissionChange = async (sendMessages, editGroupInfo) => {
+    try {
+      const res = await api.put(`/groups/${group._id}/permissions`, {
+        sendMessages: sendMessages || group.permissions?.sendMessages || 'everyone',
+        editGroupInfo: editGroupInfo || group.permissions?.editGroupInfo || 'everyone',
+      });
+      if (res.data.success) {
+        fetchContacts();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update group permissions');
     }
   };
 
@@ -446,6 +482,113 @@ const GroupInfoPanel = ({
             </div>
           </div>
 
+          {/* Group Invite Link */}
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="w-full py-3 px-2 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 rounded-xl transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Link className="w-4 h-4 text-blue-500" />
+              <span>Invite to Group via Link</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
+          </button>
+
+          {/* Pending Members (Admin Only) */}
+          {isAdmin && (
+            <button
+              onClick={() => setShowPendingModal(true)}
+              className="w-full py-3 px-2 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 rounded-xl transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <UserCheck className="w-4 h-4 text-amber-500" />
+                <span>Pending Join Requests</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {(group.pendingMembers?.length || 0) > 0 && (
+                  <Badge variant="brand">{group.pendingMembers.length}</Badge>
+                )}
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </div>
+            </button>
+          )}
+
+          {/* Admin Approval Toggle (Admin Only) */}
+          {isAdmin && (
+            <div className="py-3 px-2 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200">
+              <div className="flex items-center gap-3">
+                <ShieldAlert className="w-4 h-4 text-emerald-500" />
+                <span>Approve New Members</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleApprovalToggle}
+                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  group.requiresAdminApproval ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-700'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    group.requiresAdminApproval ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          )}
+
+          {/* Group Permissions (Admin Only) */}
+          {isAdmin && (
+            <div className="py-3 px-2 space-y-2 border-t border-slate-100 dark:border-slate-800/60">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Group Permissions</p>
+              
+              {/* Who can send messages */}
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Who can send messages</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {[
+                    { label: 'Everyone', value: 'everyone' },
+                    { label: 'Admins Only', value: 'admins' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => handlePermissionChange(opt.value, null)}
+                      className={`py-1.5 px-2 text-[11px] font-bold rounded-xl transition-all ${
+                        (group.permissions?.sendMessages || 'everyone') === opt.value
+                          ? 'bg-brand-600 text-white shadow-sm'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Who can edit group info */}
+              <div className="space-y-1 pt-1">
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Who can edit group info</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {[
+                    { label: 'Everyone', value: 'everyone' },
+                    { label: 'Admins Only', value: 'admins' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => handlePermissionChange(null, opt.value)}
+                      className={`py-1.5 px-2 text-[11px] font-bold rounded-xl transition-all ${
+                        (group.permissions?.editGroupInfo || 'everyone') === opt.value
+                          ? 'bg-brand-600 text-white shadow-sm'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Custom Group Wallpaper */}
           <button
             onClick={onOpenWallpaper}
@@ -456,6 +599,20 @@ const GroupInfoPanel = ({
               <span>Group Wallpaper</span>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400" />
+          </button>
+
+          {/* Chat Lock */}
+          <button
+            onClick={() => setShowLockModal(true)}
+            className="w-full py-3 px-2 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 rounded-xl transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Lock className="w-4 h-4 text-brand-500" />
+              <span>Lock Group Chat</span>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              {currentSettings.isLocked ? 'Locked 🔒' : 'Unlocked'}
+            </span>
           </button>
         </div>
 
@@ -572,6 +729,30 @@ const GroupInfoPanel = ({
             </div>
           </div>
         </div>
+      )}
+
+      {showLockModal && (
+        <ChatLockModal
+          chatId={group._id}
+          isCurrentlyLocked={currentSettings.isLocked}
+          onClose={() => setShowLockModal(false)}
+        />
+      )}
+
+      {showInviteModal && (
+        <GroupInviteLinkModal
+          groupId={group._id}
+          groupName={group.name}
+          isAdmin={isAdmin}
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
+
+      {showPendingModal && (
+        <GroupPendingMembersModal
+          groupId={group._id}
+          onClose={() => setShowPendingModal(false)}
+        />
       )}
     </div>
   );

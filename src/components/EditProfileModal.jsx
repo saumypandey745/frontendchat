@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Camera, Loader2, User as UserIcon } from 'lucide-react';
+import { X, Camera, Loader2, User as UserIcon, Copy, Check, Hash, QrCode } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 
 const EditProfileModal = ({ isOpen, onClose }) => {
@@ -11,6 +11,8 @@ const EditProfileModal = ({ isOpen, onClose }) => {
   const [avatarPreview, setAvatarPreview] = useState(user?.avatarUrl || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [copiedId, setCopiedId] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   if (!isOpen) return null;
 
@@ -104,6 +106,61 @@ const EditProfileModal = ({ isOpen, onClose }) => {
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Click photo to change avatar
             </p>
+          </div>
+
+          {/* ChatWave ID Display Card */}
+          <div className="p-3.5 bg-brand-50/60 dark:bg-brand-950/30 border border-brand-200/80 dark:border-brand-900/50 rounded-2xl space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Hash className="w-4 h-4 text-brand-500" />
+                <span>Your ChatWave ID</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (user?.chatwaveId) {
+                    navigator.clipboard.writeText(user.chatwaveId);
+                    setCopiedId(true);
+                    setTimeout(() => setCopiedId(false), 2000);
+                  }
+                }}
+                className="px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1"
+              >
+                {copiedId ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedId ? 'Copied!' : 'Copy'}</span>
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-base font-mono font-extrabold text-brand-600 dark:text-brand-400 tracking-wider">
+                {user?.chatwaveId ? user.chatwaveId.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3') : 'Generating...'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowQr(!showQr)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1"
+              >
+                <QrCode className="w-4 h-4 text-purple-500" />
+                <span>{showQr ? 'Hide QR' : 'My QR'}</span>
+              </button>
+            </div>
+
+            {showQr && user?.chatwaveId && (
+              <div className="pt-3 border-t border-brand-200/50 dark:border-brand-900/40 text-center animate-fade-in space-y-2">
+                <div className="p-3 bg-white rounded-2xl inline-block shadow-md">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                      user.chatwaveId
+                    )}`}
+                    alt="ChatWave ID QR Code"
+                    className="w-32 h-32 mx-auto"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  Scan with ChatWave to add as contact
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Full Name */}

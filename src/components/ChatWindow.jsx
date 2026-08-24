@@ -16,9 +16,19 @@ import {
   ChevronDown,
   Users,
   X,
+  Flame,
+  Lock,
+  BarChart2,
+  UserPlus,
+  Trash2,
+  Ban,
+  Download,
+  Bell,
+  Shield,
 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 
+import useAuth from '../hooks/useAuth';
 import useChat from '../hooks/useChat';
 import useSocket from '../hooks/useSocket';
 import useTheme from '../hooks/useTheme';
@@ -30,6 +40,8 @@ import ReplyPreview from './ReplyPreview';
 import ForwardModal from './ForwardModal';
 import LocationPickerModal from './LocationPickerModal';
 import ContactShareModal from './ContactShareModal';
+import PollModal from './PollModal';
+import AddContactModal from './AddContactModal';
 import GroupInfoPanel from './GroupInfoPanel';
 import ContactInfoPanel from './ContactInfoPanel';
 import MediaGalleryViewer from './MediaGalleryViewer';
@@ -39,6 +51,7 @@ import StarredMessagesModal from './StarredMessagesModal';
 import EmptyState from './EmptyState';
 
 const ChatWindow = ({ onBackMobile }) => {
+  const { user } = useAuth();
   const {
     selectedUser,
     selectedGroup,
@@ -61,6 +74,7 @@ const ChatWindow = ({ onBackMobile }) => {
   const [text, setText] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState('');
+  const [isViewOnceAttachment, setIsViewOnceAttachment] = useState(false);
 
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -74,7 +88,21 @@ const ChatWindow = ({ onBackMobile }) => {
   const [forwardMessageId, setForwardMessageId] = useState(null);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isPollModalOpen, setIsPollModalOpen] = useState(false);
+  const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
+  const [showThreeDotMenu, setShowThreeDotMenu] = useState(false);
+
+  const handleCreatePoll = async (pollData) => {
+    try {
+      await sendMessage({
+        type: 'poll',
+        pollData: JSON.stringify(pollData),
+      });
+    } catch (err) {
+      console.error('Poll creation error:', err);
+    }
+  };
   const [isContactInfoOpen, setIsContactInfoOpen] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isSearchInChatOpen, setIsSearchInChatOpen] = useState(false);
@@ -92,6 +120,12 @@ const ChatWindow = ({ onBackMobile }) => {
   const isOnline = !isGroupActive && onlineUsers.includes(selectedUser?._id) && !selectedUser?.hideOnlineStatus;
   const isTyping = typingUsers[activeChatId];
   const activeWallpaper = chatSettings[activeChatId]?.wallpaper;
+
+  const currentMember = isGroupActive && selectedGroup?.members?.find(
+    (m) => (m.userId?._id || m.userId)?.toString() === user?._id?.toString()
+  );
+  const isCurrentGroupAdmin = currentMember?.role === 'admin';
+  const isSendingRestricted = isGroupActive && selectedGroup?.permissions?.sendMessages === 'admins' && !isCurrentGroupAdmin;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -134,11 +168,13 @@ const ChatWindow = ({ onBackMobile }) => {
       text,
       file: selectedFile,
       type: msgType,
+      isViewOnce: isViewOnceAttachment,
     });
 
     setText('');
     setSelectedFile(null);
     setFilePreview('');
+    setIsViewOnceAttachment(false);
     setShowEmojiPicker(false);
     setShowAttachMenu(false);
     setSending(false);
@@ -162,7 +198,7 @@ const ChatWindow = ({ onBackMobile }) => {
     );
   }
 
-  const currentTitle = isGroupActive ? selectedGroup.name : selectedUser.name;
+  const currentTitle = isGroupActive ? selectedGroup.name : (selectedUser.nickname || selectedUser.name);
   const currentAvatar = isGroupActive ? selectedGroup.iconUrl : selectedUser.avatarUrl;
 
   const getWallpaperStyle = () => {
@@ -214,19 +250,35 @@ const ChatWindow = ({ onBackMobile }) => {
             {isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-slate-900" />}
           </div>
 
-          <div className="cursor-pointer" onClick={() => (isGroupActive ? setIsGroupInfoOpen(true) : setIsContactInfoOpen(true))}>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">{currentTitle}</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {isTyping ? (
-                <span className="text-brand-500 font-bold animate-pulse">typing...</span>
-              ) : isOnline ? (
-                <span className="text-emerald-500 font-semibold">Online</span>
-              ) : isGroupActive ? (
-                `${selectedGroup.members?.length || 0} members`
-              ) : (
-                'Offline'
-              )}
-            </p>
+          <div className="cursor-pointer flex items-center gap-2" onClick={() => (isGroupActive ? setIsGroupInfoOpen(true) : setIsContactInfoOpen(true))}>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">{currentTitle}</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {isTyping ? (
+                  <span className="text-brand-500 font-bold animate-pulse">typing...</span>
+                ) : isOnline ? (
+                  <span className="text-emerald-500 font-semibold">Online</span>
+                ) : isGroupActive ? (
+                  `${selectedGroup.members?.length || 0} members`
+                ) : (
+                  'Offline'
+                )}
+              </p>
+            </div>
+
+            {!isGroupActive && selectedUser && !selectedUser.isSavedContact && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAddContactModalOpen(true);
+                }}
+                className="px-2.5 py-1 bg-brand-500/10 hover:bg-brand-500/20 text-brand-600 dark:text-brand-400 rounded-full text-[11px] font-bold transition-all flex items-center gap-1 border border-brand-500/30"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>+ Add Contact</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -265,13 +317,99 @@ const ChatWindow = ({ onBackMobile }) => {
           >
             <Palette className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => (isGroupActive ? setIsGroupInfoOpen(true) : setIsContactInfoOpen(true))}
-            className="p-2.5 text-slate-600 dark:text-slate-300 hover:text-brand-500 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
-            title="Info & Options"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowThreeDotMenu(!showThreeDotMenu)}
+              className="p-2.5 text-slate-600 dark:text-slate-300 hover:text-brand-500 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
+              title="Chat Options"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+
+            {showThreeDotMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setShowThreeDotMenu(false)}
+                />
+
+                <div className="absolute right-0 top-12 z-40 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl py-1.5 animate-pop-in divide-y divide-slate-100 dark:divide-slate-800/60">
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setShowThreeDotMenu(false);
+                        if (isGroupActive) {
+                          setIsGroupInfoOpen(true);
+                        } else {
+                          setIsContactInfoOpen(true);
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5"
+                    >
+                      <User className="w-4 h-4 text-brand-500" />
+                      <span>{isGroupActive ? 'Group Info' : 'View Contact Profile'}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowThreeDotMenu(false);
+                        setIsWallpaperModalOpen(true);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5"
+                    >
+                      <Palette className="w-4 h-4 text-purple-500" />
+                      <span>Chat Wallpaper</span>
+                    </button>
+                  </div>
+
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setShowThreeDotMenu(false);
+                        if (isGroupActive) {
+                          setIsGroupInfoOpen(true);
+                        } else {
+                          setIsContactInfoOpen(true);
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5"
+                    >
+                      <Trash2 className="w-4 h-4 text-amber-500" />
+                      <span>Clear Chat History</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowThreeDotMenu(false);
+                        if (isGroupActive) {
+                          setIsGroupInfoOpen(true);
+                        } else {
+                          setIsContactInfoOpen(true);
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2.5"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                      <span>Delete Chat</span>
+                    </button>
+                  </div>
+
+                  {!isGroupActive && (
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setShowThreeDotMenu(false);
+                          setIsContactInfoOpen(true);
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5"
+                      >
+                        <Ban className="w-4 h-4 text-red-500" />
+                        <span>Block / Unblock User</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -365,16 +503,35 @@ const ChatWindow = ({ onBackMobile }) => {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedFile(null);
-              setFilePreview('');
-            }}
-            className="p-1.5 text-slate-400 hover:text-red-500 rounded-xl transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {(selectedFile.type.startsWith('image/') || selectedFile.type.startsWith('video/')) && (
+              <button
+                type="button"
+                onClick={() => setIsViewOnceAttachment(!isViewOnceAttachment)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                  isViewOnceAttachment
+                    ? 'bg-amber-500 text-white border-amber-500 shadow-md scale-105'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                }`}
+                title="Send as View Once Media"
+              >
+                <Flame className="w-4 h-4" />
+                <span>View Once</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedFile(null);
+                setFilePreview('');
+                setIsViewOnceAttachment(false);
+              }}
+              className="p-1.5 text-slate-400 hover:text-red-500 rounded-xl transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -404,7 +561,12 @@ const ChatWindow = ({ onBackMobile }) => {
       />
 
       {/* Bottom Message Input Bar */}
-      {isRecordingVoice ? (
+      {isSendingRestricted ? (
+        <div className="p-3.5 bg-slate-100 dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800/80 text-center text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
+          <Lock className="w-4 h-4 text-amber-500" />
+          <span>Only admins can send messages in this group.</span>
+        </div>
+      ) : isRecordingVoice ? (
         <VoiceRecorder
           onCancel={() => setIsRecordingVoice(false)}
           onSendAudio={handleSendVoiceNote}
@@ -530,6 +692,20 @@ const ChatWindow = ({ onBackMobile }) => {
             </div>
             <span>Contact Card</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowAttachMenu(false);
+              setIsPollModalOpen(true);
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors min-h-[44px]"
+          >
+            <div className="p-2 bg-amber-500/10 text-amber-500 rounded-xl">
+              <BarChart2 className="w-4 h-4" />
+            </div>
+            <span>Create Poll</span>
+          </button>
         </div>
       )}
 
@@ -547,6 +723,13 @@ const ChatWindow = ({ onBackMobile }) => {
       {/* Modals */}
       <ForwardModal isOpen={!!forwardMessageId} onClose={() => setForwardMessageId(null)} messageId={forwardMessageId} />
       <LocationPickerModal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} onSendLocation={(loc) => sendMessage({ type: 'location', locationData: loc, text: `📍 ${loc.address}` })} />
+      <PollModal isOpen={isPollModalOpen} onClose={() => setIsPollModalOpen(false)} onCreatePoll={handleCreatePoll} />
+      <AddContactModal
+        isOpen={isAddContactModalOpen}
+        onClose={() => setIsAddContactModalOpen(false)}
+        initialChatwaveId={selectedUser?.chatwaveId || ''}
+        initialNickname={selectedUser?.nickname || selectedUser?.name || ''}
+      />
       <ContactShareModal isOpen={isContactModalOpen} onClose={() => setIsContactModalOpen(false)} onSendContact={(c) => sendMessage({ type: 'contact', contactData: c, text: `📇 ${c.name}` })} />
       <GroupInfoPanel
         isOpen={isGroupInfoOpen}

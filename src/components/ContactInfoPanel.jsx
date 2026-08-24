@@ -17,10 +17,15 @@ import {
   FileText,
   Link as LinkIcon,
   Lock,
+  UserPlus,
+  Hash,
+  Edit2,
 } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 import useChat from '../hooks/useChat';
 import api from '../lib/axios';
+import ChatLockModal from './ChatLockModal';
+import AddContactModal from './AddContactModal';
 
 const ContactInfoPanel = ({
   isOpen,
@@ -31,11 +36,55 @@ const ContactInfoPanel = ({
   onOpenWallpaper,
 }) => {
   const { user, setUser } = useAuth();
-  const { messages, chatSettings, updateChatSetting, fetchContacts } = useChat();
+  const {
+    messages,
+    chatSettings,
+    updateChatSetting,
+    fetchContacts,
+    fetchMessages,
+    selectContact,
+  } = useChat();
 
   const [loadingBlock, setLoadingBlock] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showLockModal, setShowLockModal] = useState(false);
+  const [showAddContactModal, setShowAddContactModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleClearChat = async () => {
+    setActionLoading(true);
+    try {
+      const res = await api.post(`/messages/chat/${contact._id}/clear`);
+      if (res.data.success) {
+        await fetchMessages(contact._id);
+        setShowClearConfirm(false);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to clear chat');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteChat = async () => {
+    setActionLoading(true);
+    try {
+      const res = await api.delete(`/messages/chat/${contact._id}`);
+      if (res.data.success) {
+        await fetchContacts();
+        selectContact(null);
+        setShowDeleteConfirm(false);
+        onClose();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete chat');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   if (!isOpen || !contact) return null;
 
@@ -160,11 +209,32 @@ const ContactInfoPanel = ({
           </div>
 
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100">{contact.name}</h2>
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center justify-center gap-1.5">
+              <span>{contact.nickname || contact.name}</span>
+            </h2>
+            {contact.nickname && (
+              <p className="text-[11px] text-slate-400 font-medium">Real Name: {contact.name}</p>
+            )}
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{contact.email}</p>
+            {contact.chatwaveId && (
+              <p className="text-xs font-mono font-bold text-brand-600 dark:text-brand-400 mt-1">
+                ID: {contact.chatwaveId.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3')}
+              </p>
+            )}
             <p className="text-xs font-semibold text-brand-600 dark:text-brand-400 mt-2 bg-brand-50 dark:bg-brand-950/60 px-3 py-1 rounded-full inline-block">
               {contact.bio || 'Hey there! I am using ChatWave.'}
             </p>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setShowAddContactModal(true)}
+                className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl text-xs font-bold shadow-md transition-all inline-flex items-center gap-1.5"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>{contact.isSavedContact ? 'Edit Contact Nickname' : '+ Add to Contacts'}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -277,6 +347,20 @@ const ContactInfoPanel = ({
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400" />
           </button>
+
+          {/* Chat Lock */}
+          <button
+            onClick={() => setShowLockModal(true)}
+            className="w-full py-3 px-2 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 rounded-xl transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Lock className="w-4 h-4 text-brand-500" />
+              <span>Lock Chat</span>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              {currentSettings.isLocked ? 'Locked 🔒' : 'Unlocked'}
+            </span>
+          </button>
         </div>
 
         {/* Security & Encryption Info Line */}
@@ -301,6 +385,22 @@ const ContactInfoPanel = ({
           >
             <Ban className="w-4 h-4" />
             {isBlocked ? `Unblock ${contact.name}` : `Block ${contact.name}`}
+          </button>
+
+          {/* Clear Chat History */}
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            className="w-full py-2.5 px-4 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold transition-colors"
+          >
+            <Trash2 className="w-4 h-4 text-amber-500" /> Clear Chat History
+          </button>
+
+          {/* Delete Chat */}
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="w-full py-2.5 px-4 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 border border-red-200/60 dark:border-red-900/40 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold transition-colors"
+          >
+            <Trash2 className="w-4 h-4 text-red-500" /> Delete Chat
           </button>
 
           {/* Report Contact */}
@@ -358,6 +458,87 @@ const ContactInfoPanel = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Clear Chat Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Clear chat history?</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Messages will be removed from your view. The contact will remain in your chat list.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="flex-1 py-2.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearChat}
+                disabled={actionLoading}
+                className="flex-1 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow"
+              >
+                Clear History
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Chat Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Delete this chat?</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                This chat will be removed from your list and message history cleared. The other contact is unaffected.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteChat}
+                disabled={actionLoading}
+                className="flex-1 py-2.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow"
+              >
+                Delete Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLockModal && (
+        <ChatLockModal
+          chatId={contact._id}
+          isCurrentlyLocked={currentSettings.isLocked}
+          onClose={() => setShowLockModal(false)}
+        />
+      )}
+
+      {showAddContactModal && (
+        <AddContactModal
+          isOpen={showAddContactModal}
+          onClose={() => setShowAddContactModal(false)}
+          initialChatwaveId={contact.chatwaveId || ''}
+          initialNickname={contact.nickname || contact.name || ''}
+        />
       )}
     </div>
   );

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Eye, ChevronLeft, ChevronRight, Send } from 'lucide-react';
+import { X, Eye, ChevronLeft, ChevronRight, Send, Trash2 } from 'lucide-react';
 import useStatus from '../hooks/useStatus';
 import useAuth from '../hooks/useAuth';
 import useChat from '../hooks/useChat';
 
 const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
   const { user: currentUser } = useAuth();
-  const { markStatusViewed } = useStatus();
+  const { markStatusViewed, deleteStatus } = useStatus();
   const { selectContact, sendMessage } = useChat();
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -125,13 +125,35 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
               </div>
             </div>
 
-            <button
-              onClick={onClose}
-              className="min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-white rounded-xl flex items-center justify-center"
-              title="Close Story Viewer (Swipe Down or Esc)"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            <div className="flex items-center gap-1">
+              {isOwner && activeStatus && (
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (confirm('Delete this status update?')) {
+                      await deleteStatus(activeStatus._id);
+                      if (statuses.length <= 1) {
+                        onClose();
+                      } else {
+                        setCurrentIndex(0);
+                      }
+                    }
+                  }}
+                  className="min-h-[44px] min-w-[44px] p-2 text-red-400 hover:text-red-300 hover:bg-red-950/40 rounded-xl flex items-center justify-center transition-colors"
+                  title="Delete Status Update"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-white rounded-xl flex items-center justify-center"
+                title="Close Story Viewer (Swipe Down or Esc)"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
           </div>
         </div>
 
