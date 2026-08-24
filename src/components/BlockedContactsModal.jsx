@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, ShieldOff, Loader2 } from 'lucide-react';
 import api from '../lib/axios';
+import useAuth from '../hooks/useAuth';
 
 const BlockedContactsModal = ({ isOpen, onClose }) => {
+  const { user, setUser } = useAuth();
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -26,10 +28,16 @@ const BlockedContactsModal = ({ isOpen, onClose }) => {
 
   const handleUnblock = async (targetUserId) => {
     try {
-      await api.post(`/users/block/${targetUserId}`);
-      fetchBlocked();
+      const res = await api.post(`/users/${targetUserId}/unblock`);
+      if (res.data.success) {
+        if (user) {
+          const updatedBlocked = res.data.blockedUsers || [];
+          setUser({ ...user, blockedUsers: updatedBlocked });
+        }
+        fetchBlocked();
+      }
     } catch (e) {
-      alert('Unblock failed');
+      alert(e.response?.data?.message || 'Unblock failed');
     }
   };
 
