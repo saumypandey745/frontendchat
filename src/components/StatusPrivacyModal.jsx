@@ -52,10 +52,16 @@ const StatusPrivacyModal = ({ isOpen, onClose }) => {
     setError('');
     setSuccess('');
 
+    const targetMode = newMode || mode;
+    const rawExceptions = newExceptions !== undefined ? newExceptions : selectedExceptions;
+    const cleanExceptions = (Array.isArray(rawExceptions) ? rawExceptions : []).map(
+      (item) => (typeof item === 'object' && item !== null ? item._id || item.id || item : item)
+    );
+
     try {
       const res = await api.post('/statuses/privacy', {
-        mode: newMode || mode,
-        exceptions: newExceptions !== undefined ? newExceptions : selectedExceptions,
+        mode: targetMode,
+        exceptions: cleanExceptions,
       });
 
       if (res.data?.success) {
@@ -63,11 +69,12 @@ const StatusPrivacyModal = ({ isOpen, onClose }) => {
         setMode(res.data.statusPrivacy.mode);
         const excIds = (res.data.statusPrivacy.exceptions || []).map((u) => u._id || u);
         setSelectedExceptions(excIds);
-        await fetchStatuses();
+        if (fetchStatuses) await fetchStatuses();
         setTimeout(() => setSuccess(''), 1500);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update status privacy');
+      console.error('Save status privacy error:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to update status privacy');
     } finally {
       setSaving(false);
     }
