@@ -25,6 +25,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import useAuth from '../hooks/useAuth';
 import useChat from '../hooks/useChat';
+import StatusPrivacyModal from './StatusPrivacyModal';
 
 const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
   const { t, i18n } = useTranslation();
@@ -32,6 +33,7 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
   const { contacts, groups } = useChat();
 
   const [activeTab, setActiveTab] = useState('privacy'); // 'privacy' | 'storage' | 'appearance' | 'language' | 'help' | 'invite'
+  const [isStatusPrivacyOpen, setIsStatusPrivacyOpen] = useState(false);
 
   // Account / Privacy
   const [currentPassword, setCurrentPassword] = useState('');
@@ -235,6 +237,25 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
                   <Lock className="w-4 h-4 text-brand-500" />
                   {t('privacy')}
                 </h4>
+
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Status Privacy & Settings
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      Control who can see your 24h status updates and manage muted contacts
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsStatusPrivacyOpen(true)}
+                    className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    Configure
+                  </button>
+                </div>
 
                 <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-3">
                   <div className="flex items-center justify-between">
@@ -530,6 +551,10 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
           </form>
         </div>
       </div>
+      <StatusPrivacyModal
+        isOpen={isStatusPrivacyOpen}
+        onClose={() => setIsStatusPrivacyOpen(false)}
+      />
     </div>
   );
 };

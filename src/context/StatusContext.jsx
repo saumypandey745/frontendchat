@@ -11,6 +11,7 @@ export const StatusProvider = ({ children }) => {
 
   const [myStatus, setMyStatus] = useState(null);
   const [contactStatuses, setContactStatuses] = useState([]);
+  const [mutedStatuses, setMutedStatuses] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const fetchStatuses = useCallback(async () => {
@@ -20,7 +21,8 @@ export const StatusProvider = ({ children }) => {
       const res = await api.get('/statuses');
       if (res.data.success) {
         setMyStatus(res.data.myStatus);
-        setContactStatuses(res.data.contactStatuses);
+        setContactStatuses(res.data.contactStatuses || []);
+        setMutedStatuses(res.data.mutedStatuses || []);
       }
     } catch (err) {
       console.error('Error fetching statuses:', err);
@@ -75,6 +77,18 @@ export const StatusProvider = ({ children }) => {
     }
   };
 
+  const toggleMuteUser = async (targetUserId) => {
+    try {
+      const res = await api.post('/statuses/mute-user', { targetUserId });
+      if (res.data?.success) {
+        fetchStatuses();
+        return { success: true, isMuted: res.data.isMuted };
+      }
+    } catch (err) {
+      console.error('Toggle mute status error:', err);
+    }
+  };
+
   useEffect(() => {
     if (!socket) return;
     socket.on('statusPosted', () => {
@@ -90,11 +104,13 @@ export const StatusProvider = ({ children }) => {
       value={{
         myStatus,
         contactStatuses,
+        mutedStatuses,
         loading,
         fetchStatuses,
         postStatus,
         markStatusViewed,
         deleteStatus,
+        toggleMuteUser,
       }}
     >
       {children}

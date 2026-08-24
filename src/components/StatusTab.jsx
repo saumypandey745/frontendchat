@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, ShieldCheck, VolumeX, ChevronDown, ChevronUp, Volume2 } from 'lucide-react';
 import useStatus from '../hooks/useStatus';
 import useAuth from '../hooks/useAuth';
 import StatusComposer from './StatusComposer';
 import StatusViewer from './StatusViewer';
+import StatusPrivacyModal from './StatusPrivacyModal';
 import Button from './ui/Button';
 
 const StatusTab = () => {
   const { user } = useAuth();
-  const { myStatus, contactStatuses } = useStatus();
+  const { myStatus, contactStatuses, mutedStatuses, toggleMuteUser } = useStatus();
 
   const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [activeViewerGroup, setActiveViewerGroup] = useState(null);
+  const [showMutedSection, setShowMutedSection] = useState(false);
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800/80">
@@ -20,13 +23,22 @@ const StatusTab = () => {
         <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
           Status Updates
         </h2>
-        <Button variant="primary" size="sm" icon={Plus} onClick={() => setIsComposerOpen(true)}>
-          Add
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsPrivacyModalOpen(true)}
+            className="p-2 text-slate-500 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+            title="Status Privacy & Settings"
+          >
+            <ShieldCheck className="w-5 h-5" />
+          </button>
+          <Button variant="primary" size="sm" icon={Plus} onClick={() => setIsComposerOpen(true)}>
+            Add
+          </Button>
+        </div>
       </div>
 
       {/* List Feed */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
         {/* My Status */}
         <div className="space-y-2">
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">My Status</p>
@@ -80,7 +92,7 @@ const StatusTab = () => {
               <div
                 key={group.user._id}
                 onClick={() => setActiveViewerGroup(group)}
-                className="flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-all cursor-pointer"
+                className="group relative flex items-center gap-3.5 p-2 rounded-2xl hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-all cursor-pointer"
               >
                 <div className="relative flex-shrink-0">
                   <div
@@ -106,10 +118,80 @@ const StatusTab = () => {
                     {group.statuses.length} status update{group.statuses.length === 1 ? '' : 's'}
                   </p>
                 </div>
+
+                {/* Quick Mute Action */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleMuteUser(group.user._id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-amber-500 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all"
+                  title="Mute Status Updates"
+                >
+                  <VolumeX className="w-4 h-4" />
+                </button>
               </div>
             ))
           )}
         </div>
+
+        {/* Muted Updates Section (Collapsible) */}
+        {mutedStatuses.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+            <button
+              onClick={() => setShowMutedSection(!showMutedSection)}
+              className="w-full flex items-center justify-between py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            >
+              <span className="flex items-center gap-1.5">
+                <VolumeX className="w-3.5 h-3.5 text-amber-500" />
+                Muted updates ({mutedStatuses.length})
+              </span>
+              {showMutedSection ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            {showMutedSection && (
+              <div className="space-y-1.5 animate-fade-in">
+                {mutedStatuses.map((group) => (
+                  <div
+                    key={group.user._id}
+                    onClick={() => setActiveViewerGroup(group)}
+                    className="group relative flex items-center gap-3.5 p-2 rounded-2xl opacity-60 hover:opacity-100 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-all cursor-pointer"
+                  >
+                    <div className="relative flex-shrink-0">
+                      <div className="w-14 h-14 rounded-full p-0.5 border-2 border-slate-300 dark:border-slate-700 flex items-center justify-center">
+                        <img
+                          src={group.user.avatarUrl}
+                          alt={group.user.name}
+                          className="w-12 h-12 rounded-full object-cover grayscale opacity-80"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                        {group.user.name}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 truncate">Muted status</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleMuteUser(group.user._id);
+                      }}
+                      className="p-2 text-slate-400 hover:text-brand-500 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all"
+                      title="Unmute Status Updates"
+                    >
+                      <Volume2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <StatusComposer isOpen={isComposerOpen} onClose={() => setIsComposerOpen(false)} />
@@ -117,6 +199,10 @@ const StatusTab = () => {
         isOpen={!!activeViewerGroup}
         onClose={() => setActiveViewerGroup(null)}
         userStatusGroup={activeViewerGroup}
+      />
+      <StatusPrivacyModal
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
       />
     </div>
   );
