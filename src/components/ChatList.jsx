@@ -33,9 +33,10 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
     selectedUser,
     selectedGroup,
     typingUsers,
-    onlineUsers,
     chatSettings,
   } = useChat();
+
+  const { onlineUsers } = useSocket();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
