@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, Eye, EyeOff, Loader2, MessageSquare, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import useAuth from '../hooks/useAuth';
 
 const SignupPage = () => {
+  const { t } = useTranslation();
   const { signup } = useAuth();
   const navigate = useNavigate();
 
@@ -76,10 +78,10 @@ const SignupPage = () => {
             <MessageSquare className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            Create a <span className="text-brand-600 dark:text-brand-400">ChatWave</span> Account
+            {t('create_account')}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Join thousands of users communicating in real time
+            {t('signup_subtitle')}
           </p>
         </div>
 
@@ -96,7 +98,7 @@ const SignupPage = () => {
           {/* Full Name */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-              Full Name
+              {t('full_name')}
             </label>
             <div className="relative">
               <User className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
@@ -116,7 +118,7 @@ const SignupPage = () => {
           {/* Email */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-              Email Address
+              {t('email_address')}
             </label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
@@ -136,7 +138,7 @@ const SignupPage = () => {
           {/* Password */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-              Password
+              {t('password')}
             </label>
             <div className="relative">
               <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
@@ -163,7 +165,7 @@ const SignupPage = () => {
           {/* Confirm Password */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-              Confirm Password
+              {t('confirm_password')}
             </label>
             <div className="relative">
               <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
@@ -189,18 +191,18 @@ const SignupPage = () => {
             className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-lg shadow-brand-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
           >
             {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-            Create Account
+            {t('sign_up')}
           </button>
         </form>
 
         {/* Bottom Login Link */}
         <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-          Already have an account?{' '}
+          {t('already_have_account')}{' '}
           <Link
             to="/login"
             className="font-bold text-brand-600 dark:text-brand-400 hover:underline"
           >
-            Log in
+            {t('sign_in')}
           </Link>
         </p>
       </div>

@@ -64,6 +64,7 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
   const handleLanguageChange = (langCode) => {
     i18n.changeLanguage(langCode);
     localStorage.setItem('chatwave_lang', langCode);
+    updateSettings({ language: langCode });
   };
 
   const handleShareInvite = async () => {
@@ -241,10 +242,10 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
                 <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between">
                   <div>
                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Status Privacy & Settings
+                      {t('status_privacy_title')}
                     </p>
                     <p className="text-[10px] text-slate-500">
-                      Control who can see your 24h status updates and manage muted contacts
+                      {t('status_privacy_desc')}
                     </p>
                   </div>
                   <button
@@ -253,7 +254,7 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
                     className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5"
                   >
                     <ShieldCheck className="w-4 h-4" />
-                    Configure
+                    {t('configure')}
                   </button>
                 </div>
 
@@ -261,10 +262,10 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        Hide Online Status
+                        {t('hide_online_status')}
                       </p>
                       <p className="text-[10px] text-slate-500">
-                        Other users won't see your green online status dot
+                        {t('hide_online_desc')}
                       </p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -281,9 +282,9 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
 
                 {!isGoogleUser ? (
                   <div className="space-y-3 pt-2">
-                    <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300">Change Password</h5>
+                    <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300">{t('change_password')}</h5>
                     <div>
-                      <label className="block text-[11px] text-slate-500 mb-1">Current Password</label>
+                      <label className="block text-[11px] text-slate-500 mb-1">{t('current_password')}</label>
                       <input
                         type={showCurrent ? 'text' : 'password'}
                         value={currentPassword}
@@ -293,7 +294,7 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] text-slate-500 mb-1">New Password</label>
+                      <label className="block text-[11px] text-slate-500 mb-1">{t('new_password')}</label>
                       <input
                         type={showNew ? 'text' : 'password'}
                         value={newPassword}
@@ -305,7 +306,7 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
                   </div>
                 ) : (
                   <p className="text-xs text-slate-400 p-3 bg-slate-100 dark:bg-slate-800/40 rounded-xl">
-                    🔑 Password managed via Google Account
+                    {t('managed_by_google')}
                   </p>
                 )}
               </div>
@@ -322,22 +323,22 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
                 {/* Media Breakdown Bar */}
                 <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-3">
                   <div className="flex items-center justify-between text-xs font-bold">
-                    <span>Total Media Storage</span>
+                    <span>{t('total_media_storage')}</span>
                     <span className="text-brand-600 dark:text-brand-400">71.5 MB</span>
                   </div>
 
                   <div className="w-full h-3 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex">
-                    <div className="h-full bg-blue-500 w-[20%]" title="Photos: 14.2 MB" />
-                    <div className="h-full bg-purple-500 w-[64%]" title="Videos: 45.8 MB" />
-                    <div className="h-full bg-emerald-500 w-[11%]" title="Documents: 8.4 MB" />
-                    <div className="h-full bg-amber-500 w-[5%]" title="Voice: 3.1 MB" />
+                    <div className="h-full bg-blue-500 w-[20%]" title={`${t('photos')}: 14.2 MB`} />
+                    <div className="h-full bg-purple-500 w-[64%]" title={`${t('videos')}: 45.8 MB`} />
+                    <div className="h-full bg-emerald-500 w-[11%]" title={`${t('documents')}: 8.4 MB`} />
+                    <div className="h-full bg-amber-500 w-[5%]" title={`${t('voice')}: 3.1 MB`} />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Photos: 14.2 MB</div>
-                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> Videos: 45.8 MB</div>
-                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Documents: 8.4 MB</div>
-                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Voice: 3.1 MB</div>
+                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> {t('photos')}: 14.2 MB</div>
+                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> {t('videos')}: 45.8 MB</div>
+                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> {t('documents')}: 8.4 MB</div>
+                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> {t('voice')}: 3.1 MB</div>
                   </div>
                 </div>
 
@@ -349,7 +350,7 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
                         {t('low_data')}
                       </p>
                       <p className="text-[10px] text-slate-500">
-                        Caps WebRTC video resolution and audio bitrate to conserve bandwidth
+                        {t('low_data_desc')}
                       </p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -374,9 +375,9 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
                     onChange={(e) => setAutoDownload(e.target.value)}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   >
-                    <option value="wifi">Wi-Fi Only (Recommended)</option>
-                    <option value="always">Always (Wi-Fi & Cellular)</option>
-                    <option value="never">Never (Manual Download)</option>
+                    <option value="wifi">{t('wifi_only')}</option>
+                    <option value="always">{t('always')}</option>
+                    <option value="never">{t('never')}</option>
                   </select>
                 </div>
               </div>
@@ -406,7 +407,7 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                         }`}
                       >
-                        {size}
+                        {t(size)}
                       </button>
                     ))}
                   </div>
@@ -421,7 +422,7 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
                     onChange={(e) => setNotificationTone(e.target.value)}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   >
-                    <option value="chime">🔔 Chime (Default)</option>
+                    <option value="chime">🔔 Chime</option>
                     <option value="pulse">⚡ Pulse</option>
                     <option value="synth">🎶 Synth</option>
                     <option value="classic">📞 Classic Bell</option>

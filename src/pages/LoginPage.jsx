@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Loader2, MessageSquare, AlertCircle, ArrowRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import useAuth from '../hooks/useAuth';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
 const LoginPage = () => {
+  const { t } = useTranslation();
   const { login, resendVerification } = useAuth();
   const navigate = useNavigate();
 
@@ -66,10 +68,10 @@ const LoginPage = () => {
             <MessageSquare className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            Welcome back to <span className="text-brand-600 dark:text-brand-400">ChatWave</span>
+            {t('welcome_back')} <span className="text-brand-600 dark:text-brand-400">ChatWave</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Sign in to continue chatting with your friends
+            {t('login_subtitle')}
           </p>
         </div>
 
@@ -109,7 +111,7 @@ const LoginPage = () => {
           {/* Email */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-              Email Address
+              {t('email_address')}
             </label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
@@ -128,14 +130,14 @@ const LoginPage = () => {
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Password
+                {t('password')}
               </label>
               <button
                 type="button"
                 onClick={() => setIsForgotModalOpen(true)}
                 className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline"
               >
-                Forgot Password?
+                {t('forgot_password')}
               </button>
             </div>
             <div className="relative">
@@ -168,7 +170,7 @@ const LoginPage = () => {
                 className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800"
               />
               <span className="text-xs text-slate-600 dark:text-slate-400">
-                Remember me for 30 days
+                {t('remember_me')}
               </span>
             </label>
           </div>
@@ -180,18 +182,18 @@ const LoginPage = () => {
             className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-lg shadow-brand-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-            Sign In
+            {t('sign_in')}
           </button>
         </form>
 
         {/* Bottom Signup Link */}
         <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-          Don't have an account?{' '}
+          {t('dont_have_account')}{' '}
           <Link
             to="/signup"
             className="font-bold text-brand-600 dark:text-brand-400 hover:underline"
           >
-            Sign up now
+            {t('sign_up')}
           </Link>
         </p>
       </div>

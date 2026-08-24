@@ -12,6 +12,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import api from '../lib/axios';
 import useAuth from '../hooks/useAuth';
 import useSocket from '../hooks/useSocket';
@@ -22,6 +23,7 @@ import Badge from './ui/Badge';
 import Button from './ui/Button';
 
 const CallsTab = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { socket } = useSocket();
   const { startCall } = useCall();
@@ -79,7 +81,7 @@ const CallsTab = () => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     if (isToday(date)) return format(date, 'HH:mm');
-    if (isYesterday(date)) return 'Yesterday';
+    if (isYesterday(date)) return t('yesterday');
     return format(date, 'MMM d');
   };
 
@@ -88,10 +90,10 @@ const CallsTab = () => {
     const groups = {};
     calls.forEach((call) => {
       const date = new Date(call.createdAt || call.startedAt || Date.now());
-      let groupKey = 'Older';
-      if (isToday(date)) groupKey = 'Today';
-      else if (isYesterday(date)) groupKey = 'Yesterday';
-      else if (isThisWeek(date)) groupKey = 'This Week';
+      let groupKey = t('older');
+      if (isToday(date)) groupKey = t('today');
+      else if (isYesterday(date)) groupKey = t('yesterday');
+      else if (isThisWeek(date)) groupKey = t('this_week');
       else groupKey = format(date, 'MMMM d, yyyy');
 
       if (!groups[groupKey]) groups[groupKey] = [];
@@ -107,7 +109,7 @@ const CallsTab = () => {
       {/* Header */}
       <div className="p-4 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
         <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-          Call History
+          {t('call_history')}
         </h2>
         <span className="text-xs font-semibold text-slate-400">
           {callLogs.length} logs
@@ -190,8 +192,8 @@ const CallsTab = () => {
                                 : 'text-slate-400'
                             }`}
                           >
-                            {isCaller ? 'Outgoing' : 'Incoming'}{' '}
-                            {call.type === 'video' ? 'video' : 'voice'} call ·{' '}
+                            {isCaller ? t('outgoing') : t('incoming')}{' '}
+                            {call.type === 'video' ? t('video_call') : t('voice_call')} ·{' '}
                             {getCallTimeLabel(call.createdAt || call.startedAt)}
                           </p>
                         </div>
@@ -204,7 +206,7 @@ const CallsTab = () => {
                           if (contact) startCall(contact, call.type || 'voice');
                         }}
                         className="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-500/10 rounded-xl transition-all opacity-80 group-hover:opacity-100"
-                        title={`Call back ${contact?.name || ''}`}
+                        title={`${t('call_back')} ${contact?.name || ''}`}
                       >
                         {call.type === 'video' ? (
                           <Video className="w-4 h-4" />
@@ -227,7 +229,7 @@ const CallsTab = () => {
           <div className="w-full max-w-sm glass-modal p-6 space-y-5 animate-pop-in">
             <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
-                Call Information
+                {t('call_information')}
               </h3>
               <button
                 onClick={() => setSelectedCall(null)}
@@ -262,19 +264,19 @@ const CallsTab = () => {
                 }
               >
                 {selectedCall.call.status === 'busy'
-                  ? 'User Busy'
+                  ? t('user_busy')
                   : selectedCall.isMissed
-                  ? 'Missed Call'
+                  ? t('missed_call')
                   : selectedCall.call.status === 'answered'
-                  ? 'Answered Call'
-                  : 'Declined Call'}
+                  ? t('answered_call')
+                  : t('declined_call')}
               </Badge>
             </div>
 
             <div className="space-y-2 bg-slate-100/70 dark:bg-slate-800/50 p-3 rounded-2xl text-xs font-semibold">
               <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
                 <span className="flex items-center gap-1.5 text-slate-400">
-                  <Calendar className="w-3.5 h-3.5" /> Date & Time
+                  <Calendar className="w-3.5 h-3.5" /> {t('date_time')}
                 </span>
                 <span>
                   {format(
@@ -286,7 +288,7 @@ const CallsTab = () => {
 
               <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
                 <span className="flex items-center gap-1.5 text-slate-400">
-                  <Clock className="w-3.5 h-3.5" /> Duration
+                  <Clock className="w-3.5 h-3.5" /> {t('duration')}
                 </span>
                 <span>{formatDuration(selectedCall.call.duration)}</span>
               </div>
@@ -304,7 +306,7 @@ const CallsTab = () => {
                 startCall(target, type);
               }}
             >
-              Call Back ({selectedCall.call.type === 'video' ? 'Video' : 'Voice'})
+              {t('call_back')} ({selectedCall.call.type === 'video' ? t('video_call') : t('voice_call')})
             </Button>
           </div>
         </div>

@@ -1,12 +1,21 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import api, { setAccessToken } from '../lib/axios';
 import { sendEmail } from '../utils/email';
+import i18n from '../i18n';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Sync i18n language when user object changes or user preference is present
+  useEffect(() => {
+    if (user?.language) {
+      i18n.changeLanguage(user.language);
+      localStorage.setItem('chatwave_lang', user.language);
+    }
+  }, [user?.language]);
 
   // Initialize session on load via refresh token cookie
   useEffect(() => {

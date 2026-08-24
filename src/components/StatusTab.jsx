@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, ShieldCheck, VolumeX, ChevronDown, ChevronUp, Volume2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import useStatus from '../hooks/useStatus';
 import useAuth from '../hooks/useAuth';
 import StatusComposer from './StatusComposer';
@@ -8,6 +9,7 @@ import StatusPrivacyModal from './StatusPrivacyModal';
 import Button from './ui/Button';
 
 const StatusTab = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { myStatus, contactStatuses, mutedStatuses, toggleMuteUser } = useStatus();
 
@@ -21,18 +23,18 @@ const StatusTab = () => {
       {/* Header */}
       <div className="p-4 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
         <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-          Status Updates
+          {t('status_updates')}
         </h2>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsPrivacyModalOpen(true)}
             className="p-2 text-slate-500 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
-            title="Status Privacy & Settings"
+            title={t('status_privacy_title')}
           >
             <ShieldCheck className="w-5 h-5" />
           </button>
           <Button variant="primary" size="sm" icon={Plus} onClick={() => setIsComposerOpen(true)}>
-            Add
+            {t('add')}
           </Button>
         </div>
       </div>
@@ -41,7 +43,7 @@ const StatusTab = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
         {/* My Status */}
         <div className="space-y-2">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">My Status</p>
+          <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{t('my_status')}</p>
           <div
             onClick={() => {
               if (myStatus && myStatus.statuses.length > 0) {
@@ -72,11 +74,11 @@ const StatusTab = () => {
             </div>
 
             <div className="min-w-0 flex-1">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">My Status</h4>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{t('my_status')}</h4>
               <p className="text-[11px] text-slate-400 truncate">
                 {myStatus
                   ? `${myStatus.statuses.length} status update${myStatus.statuses.length === 1 ? '' : 's'}`
-                  : 'Tap to add status update'}
+                  : t('tap_to_add_status')}
               </p>
             </div>
           </div>
@@ -84,9 +86,9 @@ const StatusTab = () => {
 
         {/* Contacts' Status Updates */}
         <div className="space-y-2">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Recent Updates</p>
+          <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{t('recent_updates')}</p>
           {contactStatuses.length === 0 ? (
-            <p className="text-xs text-slate-400 p-2">No recent status updates from contacts</p>
+            <p className="text-xs text-slate-400 p-2">{t('no_recent_status')}</p>
           ) : (
             contactStatuses.map((group) => (
               <div
@@ -145,7 +147,7 @@ const StatusTab = () => {
             >
               <span className="flex items-center gap-1.5">
                 <VolumeX className="w-3.5 h-3.5 text-amber-500" />
-                Muted updates ({mutedStatuses.length})
+                {t('muted_updates')} ({mutedStatuses.length})
               </span>
               {showMutedSection ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>

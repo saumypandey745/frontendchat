@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Radar, Phone, Settings, Sparkles, Download, Building2, Radio } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import Tooltip from './ui/Tooltip';
 import ProfileMenu from './ProfileMenu';
 import useStatus from '../hooks/useStatus';
 
 const NavRail = ({ activeTab, setActiveTab, onOpenSettings, onOpenCommunities, onOpenChannels, showMobileChat }) => {
+  const { t } = useTranslation();
   const { contactStatuses } = useStatus();
   const hasUnseenStatus = contactStatuses.some((g) => !g.allViewed);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -19,11 +21,11 @@ const NavRail = ({ activeTab, setActiveTab, onOpenSettings, onOpenCommunities, o
   }, []);
 
   const navItems = [
-    { id: 'chats', label: 'Chats', icon: MessageSquare },
-    { id: 'channels', label: 'Channels', icon: Radio, isChannel: true },
-    { id: 'communities', label: 'Communities', icon: Building2, isCommunity: true },
-    { id: 'status', label: 'Status Stories', icon: Radar, isStatus: true },
-    { id: 'calls', label: 'Calls Log', icon: Phone },
+    { id: 'chats', label: t('chats'), icon: MessageSquare },
+    { id: 'channels', label: t('channels'), icon: Radio, isChannel: true },
+    { id: 'communities', label: t('communities'), icon: Building2, isCommunity: true },
+    { id: 'status', label: t('status'), icon: Radar, isStatus: true },
+    { id: 'calls', label: t('calls'), icon: Phone },
   ];
 
   return (
@@ -100,7 +102,7 @@ const NavRail = ({ activeTab, setActiveTab, onOpenSettings, onOpenCommunities, o
             </Tooltip>
           )}
 
-          <Tooltip content="Account Settings" position="right">
+          <Tooltip content={t('settings')} position="right">
             <button
               onClick={onOpenSettings}
               className="min-h-[44px] min-w-[44px] p-3 text-slate-400 hover:text-white hover:bg-slate-800/60 rounded-2xl transition-all active:scale-95 flex items-center justify-center"
@@ -154,7 +156,7 @@ const NavRail = ({ activeTab, setActiveTab, onOpenSettings, onOpenCommunities, o
           className="flex flex-col items-center justify-center flex-1 h-12 rounded-xl text-slate-400 hover:text-slate-200 active:scale-95"
         >
           <Settings className="w-5 h-5" />
-          <span className="text-[10px] mt-1 tracking-tight">Settings</span>
+          <span className="text-[10px] mt-1 tracking-tight">{t('settings')}</span>
         </button>
 
         <div className="flex items-center justify-center flex-1 h-12">

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { User, Settings, Sun, Moon, Monitor, LogOut, Star, Laptop } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import useAuth from '../hooks/useAuth';
 import useTheme from '../hooks/useTheme';
 import EditProfileModal from './EditProfileModal';
@@ -11,6 +12,7 @@ import LinkedDevicesModal from './LinkedDevicesModal';
 const FALLBACK_AVATAR = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%230d9488'/%3E%3Ccircle cx='20' cy='16' r='7' fill='white' opacity='0.85'/%3E%3Cellipse cx='20' cy='36' rx='12' ry='10' fill='white' opacity='0.85'/%3E%3C/svg%3E`;
 
 const ProfileMenu = () => {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
 
@@ -125,32 +127,32 @@ const ProfileMenu = () => {
               onClick={() => { setIsOpen(false); setIsEditModalOpen(true); }}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
             >
-              <User className="w-4 h-4 text-brand-500 flex-shrink-0" /> Edit Profile
+              <User className="w-4 h-4 text-brand-500 flex-shrink-0" /> {t('edit_profile')}
             </button>
             <button
               onClick={() => { setIsOpen(false); setIsDevicesModalOpen(true); }}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
             >
-              <Laptop className="w-4 h-4 text-brand-500 flex-shrink-0" /> Linked Devices
+              <Laptop className="w-4 h-4 text-brand-500 flex-shrink-0" /> {t('linked_devices')}
             </button>
             <button
               onClick={() => { setIsOpen(false); setIsStarredModalOpen(true); }}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
             >
-              <Star className="w-4 h-4 text-amber-500 flex-shrink-0" /> Starred Messages
+              <Star className="w-4 h-4 text-amber-500 flex-shrink-0" /> {t('starred_messages')}
             </button>
             <button
               onClick={() => { setIsOpen(false); setIsSettingsModalOpen(true); }}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors"
             >
-              <Settings className="w-4 h-4 text-brand-500 flex-shrink-0" /> Account Settings
+              <Settings className="w-4 h-4 text-brand-500 flex-shrink-0" /> {t('account_settings')}
             </button>
           </div>
 
           {/* Theme Switcher */}
           <div className="px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
-              Theme
+              {t('theme')}
             </p>
             <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl">
               <button
@@ -161,7 +163,7 @@ const ProfileMenu = () => {
                     : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
-                <Sun className="w-3.5 h-3.5" /> Light
+                <Sun className="w-3.5 h-3.5" /> {t('light')}
               </button>
               <button
                 onClick={() => setTheme('dark')}
@@ -171,7 +173,7 @@ const ProfileMenu = () => {
                     : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
-                <Moon className="w-3.5 h-3.5" /> Dark
+                <Moon className="w-3.5 h-3.5" /> {t('dark')}
               </button>
               <button
                 onClick={() => setTheme('system')}
@@ -181,7 +183,7 @@ const ProfileMenu = () => {
                     : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
-                <Monitor className="w-3.5 h-3.5" /> Auto
+                <Monitor className="w-3.5 h-3.5" /> {t('auto')}
               </button>
             </div>
           </div>
@@ -192,7 +194,7 @@ const ProfileMenu = () => {
               onClick={() => { setIsOpen(false); logout(); }}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
             >
-              <LogOut className="w-4 h-4 flex-shrink-0" /> Logout
+              <LogOut className="w-4 h-4 flex-shrink-0" /> {t('logout')}
             </button>
           </div>
         </div>,

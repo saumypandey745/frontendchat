@@ -12,6 +12,7 @@ import {
   Unlock,
   Megaphone,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import useChat from '../hooks/useChat';
 import useSocket from '../hooks/useSocket';
 import api from '../lib/axios';
@@ -25,6 +26,7 @@ import EmptyState from './EmptyState';
 import { format, isToday, isYesterday } from 'date-fns';
 
 const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalette, onOpenBroadcastModal }) => {
+  const { t } = useTranslation();
   const {
     contacts,
     groups,
@@ -142,35 +144,35 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
       <div className="p-4 border-b border-slate-200/80 dark:border-slate-800/80 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-            Messages
+            {t('messages')}
           </h2>
 
           <div className="flex items-center gap-1.5">
             <button
               onClick={onOpenCommandPalette}
               className="min-h-[44px] min-w-[44px] p-2.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-xl transition-colors flex items-center justify-center"
-              title="Global Search (Cmd+K)"
+              title={`${t('global_search')} (Cmd+K)`}
             >
               <Command className="w-4 h-4" />
             </button>
             <button
               onClick={onOpenBroadcastModal}
               className="min-h-[44px] min-w-[44px] p-2.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl hover:bg-amber-500/20 transition-colors flex items-center justify-center"
-              title="Broadcast Lists"
+              title={t('broadcast_lists')}
             >
               <Megaphone className="w-4 h-4" />
             </button>
             <button
               onClick={() => setIsAddContactOpen(true)}
               className="min-h-[44px] min-w-[44px] p-2.5 bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-xl hover:bg-brand-500/20 transition-colors flex items-center justify-center"
-              title="Add Contact by ID"
+              title={t('add_contact_by_id')}
             >
               <UserPlus className="w-4 h-4" />
             </button>
             <button
               onClick={() => setIsGroupModalOpen(true)}
               className="min-h-[44px] min-w-[44px] p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center"
-              title="New Group Chat"
+              title={t('new_group_chat')}
             >
               <Users className="w-4 h-4" />
             </button>
@@ -184,7 +186,7 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search contacts or groups..."
+            placeholder={t('search_chats')}
             className="w-full pl-10 pr-4 py-2 text-xs font-medium rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/70 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
           />
         </div>
@@ -205,7 +207,7 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
         >
           <div className="flex items-center gap-2.5">
             <Lock className="w-4 h-4 text-brand-500" />
-            <span>Locked Chats</span>
+            <span>{t('locked_chats')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Badge variant="brand">{lockedCount}</Badge>
@@ -224,7 +226,7 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
         >
           <div className="flex items-center gap-2.5">
             <Archive className="w-4 h-4 text-brand-500" />
-            <span>Archived Chats</span>
+            <span>{t('archived_chats')}</span>
           </div>
           <Badge variant="brand">{archivedCount}</Badge>
         </button>
@@ -271,7 +273,7 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
             {pinnedConversations.length > 0 && (
               <div className="p-1 space-y-1">
                 <p className="px-3 pt-2 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Pinned Chats
+                  {t('pinned_chats')}
                 </p>
                 {pinnedConversations.map((item) => renderChatItem(item))}
                 <div className="my-1 border-b border-slate-200/60 dark:border-slate-800/60" />
@@ -365,11 +367,11 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
 
           <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
             {isTyping ? (
-              <span className="text-brand-500 font-bold animate-pulse">typing...</span>
+              <span className="text-brand-500 font-bold animate-pulse">{t('typing')}</span>
             ) : settings.isLocked && !isLockedFolderUnlocked ? (
-              <span className="italic text-slate-400">🔒 Locked Chat</span>
+              <span className="italic text-slate-400">{t('locked_chat_preview')}</span>
             ) : (
-              item.lastMessage?.text || (item.lastMessage?.imageUrl ? '📷 Attachment' : 'No messages')
+              item.lastMessage?.text || (item.lastMessage?.imageUrl ? `📷 ${t('photos')}` : t('no_messages'))
             )}
           </p>
         </div>
