@@ -14,6 +14,7 @@ import {
   FileText,
   Palette,
   ChevronDown,
+  ChevronRight,
   Users,
   X,
   Flame,
@@ -24,7 +25,10 @@ import {
   Ban,
   Download,
   Bell,
+  Clock,
+  Flag,
   Shield,
+  Check,
 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 
@@ -35,6 +39,7 @@ import useChat from '../hooks/useChat';
 import useSocket from '../hooks/useSocket';
 import useTheme from '../hooks/useTheme';
 import useCall from '../hooks/useCall';
+import api from '../lib/axios';
 
 import MessageBubble from './MessageBubble';
 import VoiceRecorder from './VoiceRecorder';
@@ -57,7 +62,7 @@ import EmptyState from './EmptyState';
 
 const ChatWindow = ({ onBackMobile }) => {
   const { t } = useTranslation();
-  const { user, isUserBlocked } = useAuth();
+  const { user, isUserBlocked, toggleBlockUser } = useAuth();
   const {
     selectedUser,
     selectedGroup,
@@ -71,6 +76,11 @@ const ChatWindow = ({ onBackMobile }) => {
     setReplyingToMessage,
     typingUsers,
     chatSettings,
+    updateChatSetting,
+    fetchContacts,
+    fetchMessages,
+    selectContact,
+    selectGroup,
   } = useChat();
 
   const { onlineUsers } = useSocket();
@@ -90,7 +100,7 @@ const ChatWindow = ({ onBackMobile }) => {
   // Scroll anchor state
   const [showScrollDown, setShowScrollDown] = useState(false);
 
-  // Modals
+  // Modals & 3-Dot Menu Actions
   const [forwardMessageId, setForwardMessageId] = useState(null);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -100,7 +110,15 @@ const ChatWindow = ({ onBackMobile }) => {
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState('');
   const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
+
+  // 3-Dot Dropdown & Action Modals State
   const [showThreeDotMenu, setShowThreeDotMenu] = useState(false);
+  const [activeSubmenu, setActiveSubmenu] = useState(null); // 'mute' | 'disappearing' | null
+  const [showClearChatModal, setShowClearChatModal] = useState(false);
+  const [showDeleteChatModal, setShowDeleteChatModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const handleCreatePoll = async (pollData) => {
     try {
@@ -112,6 +130,7 @@ const ChatWindow = ({ onBackMobile }) => {
       console.error('Poll creation error:', err);
     }
   };
+
   const [isContactInfoOpen, setIsContactInfoOpen] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isSearchInChatOpen, setIsSearchInChatOpen] = useState(false);
@@ -129,6 +148,144 @@ const ChatWindow = ({ onBackMobile }) => {
   const isOnline = !isGroupActive && onlineUsers.includes(selectedUser?._id) && !selectedUser?.hideOnlineStatus;
   const isTyping = typingUsers[activeChatId];
   const activeWallpaper = chatSettings[activeChatId]?.wallpaper;
+
+  const currentSettings = chatSettings[activeChatId] || {};
+  const isMuted = Boolean(
+    currentSettings.muted &&
+      (!currentSettings.mutedUntil || new Date(currentSettings.mutedUntil) > new Date())
+  );
+  const muteOption = currentSettings.muteOption || (isMuted ? (currentSettings.mutedUntil ? '8h' : 'always') : 'off');
+  const disappearingTimer = currentSettings.disappearingDuration || 0;
+
+  const isMuteOptionActive = (optHours) => {
+    if (optHours === 0) return !isMuted;
+    if (!isMuted) return false;
+    if (optHours === 8) return muteOption === '8h';
+    if (optHours === 168) return muteOption === '1w';
+    if (optHours === 87600) return muteOption === 'always';
+    return false;
+  };
+
+  const getErrorMessage = (err, fallback) => {
+    if (err.response?.status === 401) return 'Session expired, please log in again.';
+    if (err.response?.status === 403) return err.response?.data?.message || 'Action forbidden.';
+    return err.response?.data?.message || err.message || fallback;
+  };
+
+  // 3-Dot Menu Action Handlers
+  const handleMuteToggle = async (hours) => {
+    if (!activeChatId) return;
+    if (hours === 0) {
+      await updateChatSetting(activeChatId, { muted: false, muteHours: 0 });
+    } else {
+      await updateChatSetting(activeChatId, { muted: true, muteHours: hours });
+    }
+    setActiveSubmenu(null);
+    setShowThreeDotMenu(false);
+  };
+
+  const handleDisappearingToggle = async (durationSec) => {
+    if (!activeChatId) return;
+    await updateChatSetting(activeChatId, { disappearingDuration: durationSec });
+    setActiveSubmenu(null);
+    setShowThreeDotMenu(false);
+  };
+
+  const handleExportChat = async () => {
+    setShowThreeDotMenu(false);
+    try {
+      const exportId = isGroupActive ? selectedGroup._id : selectedUser._id;
+      const exportName = isGroupActive ? selectedGroup.name : (selectedUser.name || 'Chat');
+      const res = await api.get(`/users/export-chat/${exportId}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `ChatWave_Export_${exportName.replace(/\s+/g, '_')}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      alert(getErrorMessage(err, 'Failed to export chat backup.'));
+    }
+  };
+
+  const handleReportAction = async () => {
+    setActionLoading(true);
+    try {
+      if (isGroupActive) {
+        await api.post(`/groups/${selectedGroup._id}/report`, {
+          reason: 'Reported group from chat menu',
+        });
+        alert(`Report submitted for group "${selectedGroup.name}". Thank you.`);
+      } else {
+        await api.post(`/users/${selectedUser._id}/report`, {
+          reason: 'Reported contact from chat menu',
+        });
+        alert(`Report submitted for ${selectedUser.name}. Thank you.`);
+      }
+      setShowReportModal(false);
+    } catch (err) {
+      alert(getErrorMessage(err, 'Failed to submit report.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleClearChat = async () => {
+    setActionLoading(true);
+    try {
+      const res = await api.post(`/messages/chat/${activeChatId}/clear`);
+      if (res.data.success) {
+        await fetchMessages(activeChatId, 1, false, isGroupActive);
+        setShowClearChatModal(false);
+      }
+    } catch (err) {
+      alert(getErrorMessage(err, 'Failed to clear chat history.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteChatAction = async () => {
+    setActionLoading(true);
+    try {
+      if (isGroupActive) {
+        const currentMember = selectedGroup.members?.find(
+          (m) => (m.userId?._id || m.userId)?.toString() === user?._id?.toString()
+        );
+        const isAdmin = currentMember?.role === 'admin';
+        if (isAdmin) {
+          await api.delete(`/groups/${selectedGroup._id}`);
+        } else {
+          await api.post(`/groups/${selectedGroup._id}/leave`);
+        }
+        await fetchContacts(false);
+        selectGroup(null);
+      } else {
+        await api.delete(`/messages/chat/${selectedUser._id}`);
+        await fetchContacts(false);
+        selectContact(null);
+      }
+      setShowDeleteChatModal(false);
+    } catch (err) {
+      alert(getErrorMessage(err, 'Failed to delete chat.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleToggleBlockAction = async () => {
+    if (!selectedUser) return;
+    setActionLoading(true);
+    const res = await toggleBlockUser(selectedUser._id);
+    setActionLoading(false);
+    setShowBlockModal(false);
+    if (res?.success) {
+      fetchContacts(false);
+    } else if (res?.message) {
+      alert(res.message);
+    }
+  };
 
   const currentMember = isGroupActive && selectedGroup?.members?.find(
     (m) => (m.userId?._id || m.userId)?.toString() === user?._id?.toString()
@@ -328,7 +485,10 @@ const ChatWindow = ({ onBackMobile }) => {
           </button>
           <div className="relative">
             <button
-              onClick={() => setShowThreeDotMenu(!showThreeDotMenu)}
+              onClick={() => {
+                setShowThreeDotMenu(!showThreeDotMenu);
+                setActiveSubmenu(null);
+              }}
               className="p-2.5 text-slate-600 dark:text-slate-300 hover:text-brand-500 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
               title={t('settings')}
             >
@@ -339,10 +499,14 @@ const ChatWindow = ({ onBackMobile }) => {
               <>
                 <div
                   className="fixed inset-0 z-30"
-                  onClick={() => setShowThreeDotMenu(false)}
+                  onClick={() => {
+                    setShowThreeDotMenu(false);
+                    setActiveSubmenu(null);
+                  }}
                 />
 
-                <div className="absolute right-0 top-12 z-40 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl py-1.5 animate-pop-in divide-y divide-slate-100 dark:divide-slate-800/60">
+                <div className="absolute right-0 top-12 z-40 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl py-1.5 animate-pop-in divide-y divide-slate-100 dark:divide-slate-800/60 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                  {/* Section 1: Contact / Group Info */}
                   <div className="py-1">
                     <button
                       onClick={() => {
@@ -353,34 +517,168 @@ const ChatWindow = ({ onBackMobile }) => {
                           setIsContactInfoOpen(true);
                         }
                       }}
-                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5"
+                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between transition-colors"
                     >
-                      <User className="w-4 h-4 text-brand-500" />
-                      <span>{isGroupActive ? t('group_info') : t('view_contact_profile')}</span>
+                      <span className="flex items-center gap-2.5">
+                        {isGroupActive ? (
+                          <Users className="w-4 h-4 text-brand-500" />
+                        ) : (
+                          <User className="w-4 h-4 text-brand-500" />
+                        )}
+                        <span>{isGroupActive ? t('group_info') : t('view_contact_profile')}</span>
+                      </span>
                     </button>
+                  </div>
+
+                  {/* Section 2: Preferences (Mute, Disappearing Messages, Wallpaper) */}
+                  <div className="py-1">
+                    {/* Mute Notifications */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setActiveSubmenu(activeSubmenu === 'mute' ? null : 'mute')}
+                        className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between transition-colors"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <Bell className="w-4 h-4 text-brand-500" />
+                          <span>{t('mute_notifications')}</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          {isMuted ? (muteOption === '8h' ? '8 Hours' : muteOption === '1w' ? '1 Week' : 'Always') : 'Off'}
+                          <ChevronRight className={`w-3 h-3 transition-transform ${activeSubmenu === 'mute' ? 'rotate-90' : ''}`} />
+                        </span>
+                      </button>
+
+                      {/* Inline Mute Submenu Selector */}
+                      {activeSubmenu === 'mute' && (
+                        <div className="mx-3 my-1 p-1 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-1 animate-fade-in">
+                          {[
+                            { label: 'Off', hours: 0 },
+                            { label: '8 Hours', hours: 8 },
+                            { label: '1 Week', hours: 168 },
+                            { label: 'Always', hours: 87600 },
+                          ].map((opt) => {
+                            const active = isMuteOptionActive(opt.hours);
+                            return (
+                              <button
+                                key={opt.label}
+                                onClick={() => handleMuteToggle(opt.hours)}
+                                className={`py-1.5 px-2 text-[10px] font-bold rounded-lg transition-all text-center ${
+                                  active
+                                    ? 'bg-brand-600 text-white shadow'
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Disappearing Messages */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setActiveSubmenu(activeSubmenu === 'disappearing' ? null : 'disappearing')}
+                        className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between transition-colors"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <Clock className="w-4 h-4 text-emerald-500" />
+                          <span>{t('disappearing_messages')}</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          {disappearingTimer === 0 ? 'Off' : `${disappearingTimer / 86400}d`}
+                          <ChevronRight className={`w-3 h-3 transition-transform ${activeSubmenu === 'disappearing' ? 'rotate-90' : ''}`} />
+                        </span>
+                      </button>
+
+                      {/* Inline Disappearing Submenu Selector */}
+                      {activeSubmenu === 'disappearing' && (
+                        <div className="mx-3 my-1 p-1 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-1 animate-fade-in">
+                          {[
+                            { label: 'Off', sec: 0 },
+                            { label: '24 Hours', sec: 86400 },
+                            { label: '7 Days', sec: 604800 },
+                            { label: '90 Days', sec: 7776000 },
+                          ].map((opt) => {
+                            const active = disappearingTimer === opt.sec;
+                            return (
+                              <button
+                                key={opt.label}
+                                onClick={() => handleDisappearingToggle(opt.sec)}
+                                className={`py-1.5 px-2 text-[10px] font-bold rounded-lg transition-all text-center ${
+                                  active
+                                    ? 'bg-emerald-600 text-white shadow'
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Custom Chat Wallpaper */}
                     <button
                       onClick={() => {
                         setShowThreeDotMenu(false);
                         setIsWallpaperModalOpen(true);
                       }}
-                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5"
+                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors"
                     >
                       <Palette className="w-4 h-4 text-purple-500" />
                       <span>{t('chat_wallpaper')}</span>
                     </button>
                   </div>
 
+                  {/* Section 3: Export Chat */}
+                  <div className="py-1">
+                    <button
+                      onClick={handleExportChat}
+                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors"
+                    >
+                      <Download className="w-4 h-4 text-brand-500" />
+                      <span>{t('export_chat')}</span>
+                    </button>
+                  </div>
+
+                  {/* Section 4: Safety & Block */}
                   <div className="py-1">
                     <button
                       onClick={() => {
                         setShowThreeDotMenu(false);
-                        if (isGroupActive) {
-                          setIsGroupInfoOpen(true);
-                        } else {
-                          setIsContactInfoOpen(true);
-                        }
+                        setShowReportModal(true);
                       }}
-                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5"
+                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 transition-colors"
+                    >
+                      <Flag className="w-4 h-4 text-amber-500" />
+                      <span>{isGroupActive ? 'Report Group' : t('report_contact')}</span>
+                    </button>
+
+                    {!isGroupActive && (
+                      <button
+                        onClick={() => {
+                          setShowThreeDotMenu(false);
+                          setShowBlockModal(true);
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2.5 transition-colors"
+                      >
+                        <Ban className="w-4 h-4 text-red-500" />
+                        <span>{isUserBlocked(selectedUser?._id) ? t('unblock_user') : t('block_user')}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Section 5: Destructive Actions */}
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setShowThreeDotMenu(false);
+                        setShowClearChatModal(true);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 flex items-center gap-2.5 transition-colors"
                     >
                       <Trash2 className="w-4 h-4 text-amber-500" />
                       <span>{t('clear_chat')}</span>
@@ -388,33 +686,14 @@ const ChatWindow = ({ onBackMobile }) => {
                     <button
                       onClick={() => {
                         setShowThreeDotMenu(false);
-                        if (isGroupActive) {
-                          setIsGroupInfoOpen(true);
-                        } else {
-                          setIsContactInfoOpen(true);
-                        }
+                        setShowDeleteChatModal(true);
                       }}
-                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2.5"
+                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2.5 transition-colors"
                     >
                       <Trash2 className="w-4 h-4 text-red-500" />
-                      <span>{t('delete_chat')}</span>
+                      <span>{isGroupActive ? 'Exit Group' : t('delete_chat')}</span>
                     </button>
                   </div>
-
-                  {!isGroupActive && (
-                    <div className="py-1">
-                      <button
-                        onClick={() => {
-                          setShowThreeDotMenu(false);
-                          setIsContactInfoOpen(true);
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5"
-                      >
-                        <Ban className="w-4 h-4 text-red-500" />
-                        <span>{isUserBlocked(selectedUser?._id) ? t('unblock_user') : t('block_user')}</span>
-                      </button>
-                    </div>
-                  )}
                 </div>
               </>
             )}
@@ -786,6 +1065,146 @@ const ChatWindow = ({ onBackMobile }) => {
           await sendMessage({ file, type: 'image' });
         }}
       />
+
+      {/* Clear Chat Confirmation Modal */}
+      {showClearChatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Clear chat history?</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Messages will be removed from your view. The contact/group will remain in your chat list.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowClearChatModal(false)}
+                className="flex-1 py-2.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearChat}
+                disabled={actionLoading}
+                className="flex-1 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow"
+              >
+                Clear History
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Chat / Exit Group Confirmation Modal */}
+      {showDeleteChatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {isGroupActive ? `Exit "${selectedGroup?.name}"?` : `Delete chat with ${selectedUser?.name}?`}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {isGroupActive
+                  ? 'You will no longer be able to send or receive messages in this group.'
+                  : 'This chat will be removed from your list and message history cleared.'}
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteChatModal(false)}
+                className="flex-1 py-2.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteChatAction}
+                disabled={actionLoading}
+                className="flex-1 py-2.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow"
+              >
+                {isGroupActive ? 'Exit Group' : 'Delete Chat'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+              <Flag className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {isGroupActive ? `Report "${selectedGroup?.name}"?` : `Report ${selectedUser?.name}?`}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Reported items will be reviewed by ChatWave moderation team. Thank you for keeping ChatWave safe.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="flex-1 py-2.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReportAction}
+                disabled={actionLoading}
+                className="flex-1 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow"
+              >
+                Submit Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block / Unblock Confirmation Modal */}
+      {showBlockModal && selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+              <Ban className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {isUserBlocked(selectedUser._id) ? `Unblock ${selectedUser.name}?` : `Block ${selectedUser.name}?`}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {isUserBlocked(selectedUser._id)
+                  ? `${selectedUser.name} will be able to send you messages and call you.`
+                  : `Blocked contacts will no longer be able to call you or send you messages.`}
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowBlockModal(false)}
+                className="flex-1 py-2.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleToggleBlockAction}
+                disabled={actionLoading}
+                className={`flex-1 py-2.5 text-xs font-bold text-white rounded-xl shadow ${
+                  isUserBlocked(selectedUser._id) ? 'bg-brand-600 hover:bg-brand-700' : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {isUserBlocked(selectedUser._id) ? 'Unblock' : 'Block'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
