@@ -30,6 +30,8 @@ const StatusComposer = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [postedSuccess, setPostedSuccess] = useState(false);
 
+  const [errorMessage, setErrorMessage] = useState('');
+
   if (!isOpen) return null;
 
   const handleMediaChange = (e) => {
@@ -38,24 +40,33 @@ const StatusComposer = ({ isOpen, onClose }) => {
       setMediaFile(file);
       setMediaPreview(URL.createObjectURL(file));
       setMode('media');
+      setErrorMessage('');
     }
   };
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
+    setErrorMessage('');
     if (mode === 'text' && !content.trim()) return;
     if (mode === 'media' && !mediaFile) return;
 
     setLoading(true);
+
+    // Determine correct enum type ('image', 'video', or 'text')
+    let statusType = 'text';
+    if (mode === 'media' && mediaFile) {
+      statusType = mediaFile.type.startsWith('video/') ? 'video' : 'image';
+    }
+
     const res = await postStatus({
-      type: mode,
+      type: statusType,
       content,
       file: mediaFile,
       backgroundColor: gradient,
     });
     setLoading(false);
 
-    if (res.success) {
+    if (res?.success) {
       setPostedSuccess(true);
       setTimeout(() => {
         setContent('');
@@ -64,6 +75,8 @@ const StatusComposer = ({ isOpen, onClose }) => {
         setPostedSuccess(false);
         onClose();
       }, 1000);
+    } else {
+      setErrorMessage(res?.message || 'Failed to post status update');
     }
   };
 
@@ -118,6 +131,11 @@ const StatusComposer = ({ isOpen, onClose }) => {
 
         {/* Central Composer Canvas */}
         <div className="flex-1 relative flex flex-col items-center justify-center p-6 text-center z-10 overflow-hidden">
+          {errorMessage && (
+            <div className="w-full mb-3 p-3 rounded-2xl bg-red-950/80 border border-red-800 text-red-300 text-xs font-bold animate-fade-in">
+              {errorMessage}
+            </div>
+          )}
           {mode === 'text' ? (
             <div
               style={{ background: gradient }}

@@ -164,11 +164,29 @@ const StatusViewer = ({ isOpen, onClose, userStatusGroup }) => {
           className="flex-1 flex items-center justify-center p-6 text-center text-white font-bold text-xl relative cursor-pointer select-none"
         >
           {activeStatus?.mediaUrl ? (
-            <img
-              src={activeStatus.mediaUrl}
-              alt="Status"
-              className="w-full h-full object-contain max-h-full"
-            />
+            <div className="relative w-full h-full flex items-center justify-center">
+              {activeStatus.type === 'video' || activeStatus.mediaUrl.match(/\.(mp4|webm|mov|ogg)$/i) ? (
+                <video
+                  src={activeStatus.mediaUrl}
+                  controls
+                  autoPlay
+                  className="w-full h-full object-contain max-h-full"
+                />
+              ) : (
+                <img
+                  src={activeStatus.mediaUrl}
+                  alt="Status"
+                  className="w-full h-full object-contain max-h-full"
+                />
+              )}
+
+              {/* Caption Overlay for Media Statuses */}
+              {activeStatus.content && (
+                <div className="absolute bottom-4 inset-x-4 p-3 bg-slate-950/80 backdrop-blur-md rounded-2xl text-xs font-semibold text-white text-center border border-white/10 shadow-xl">
+                  {activeStatus.content}
+                </div>
+              )}
+            </div>
           ) : (
             <p className="whitespace-pre-wrap leading-relaxed">{activeStatus?.content}</p>
           )}
