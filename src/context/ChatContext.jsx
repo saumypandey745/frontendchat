@@ -585,6 +585,7 @@ export const ChatProvider = ({ children }) => {
         groups,
         loadingContacts,
         fetchContacts,
+        fetchGroups: fetchContacts,
         selectedUser,
         selectedGroup,
         setSelectedGroup,

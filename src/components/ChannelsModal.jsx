@@ -119,9 +119,12 @@ const ChannelsModal = ({ isOpen, onClose }) => {
         setChannelDesc('');
         setIsCreatingChannel(false);
         await fetchChannels();
+        if (res.data.channel) {
+          setSelectedChannel(res.data.channel);
+        }
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create channel');
+      setError(err.response?.data?.message || err.message || 'Failed to create channel');
     } finally {
       setSubmitting(false);
     }
@@ -177,6 +180,18 @@ const ChannelsModal = ({ isOpen, onClose }) => {
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Status Banners */}
+        {error && (
+          <div className="m-4 p-3 rounded-2xl bg-red-50 dark:bg-red-950/50 border border-red-200 text-red-600 text-xs">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="m-4 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 text-emerald-600 text-xs flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4" /> {success}
+          </div>
+        )}
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">

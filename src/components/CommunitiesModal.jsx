@@ -70,10 +70,13 @@ const CommunitiesModal = ({ isOpen, onClose }) => {
         setCommDesc('');
         setIsCreatingCommunity(false);
         await fetchCommunities();
-        await fetchGroups(); // Refresh chat list with newly created Announcements group
+        if (fetchContacts) await fetchContacts();
+        if (res.data.community) {
+          setSelectedCommunity(res.data.community);
+        }
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create community');
+      setError(err.response?.data?.message || err.message || 'Failed to create community');
     } finally {
       setSubmitting(false);
     }
@@ -99,10 +102,10 @@ const CommunitiesModal = ({ isOpen, onClose }) => {
         setSubGroupDesc('');
         setIsCreatingSubGroup(false);
         await fetchCommunities();
-        await fetchGroups();
+        if (fetchContacts) await fetchContacts();
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add sub-group');
+      setError(err.response?.data?.message || err.message || 'Failed to add sub-group');
     } finally {
       setSubmitting(false);
     }
