@@ -35,7 +35,7 @@ export const StatusProvider = ({ children }) => {
     fetchStatuses();
   }, [fetchStatuses]);
 
-  const postStatus = async ({ type, content, file, backgroundColor, font }) => {
+  const postStatus = async ({ type, content, file, backgroundColor, font, statusPrivacy }) => {
     try {
       const formData = new FormData();
       if (type) formData.append('type', type);
@@ -43,6 +43,7 @@ export const StatusProvider = ({ children }) => {
       if (backgroundColor) formData.append('backgroundColor', backgroundColor);
       if (font) formData.append('font', font);
       if (file) formData.append('media', file);
+      if (statusPrivacy) formData.append('statusPrivacy', JSON.stringify(statusPrivacy));
 
       const res = await api.post('/statuses', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },

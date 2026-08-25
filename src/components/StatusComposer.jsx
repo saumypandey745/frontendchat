@@ -13,7 +13,15 @@ import {
   Shield,
   Video,
   Trash2,
+  Users,
+  UserX,
+  UserCheck,
+  ChevronDown,
+  Search,
+  Lock,
 } from 'lucide-react';
+import api from '../lib/axios';
+import useChat from '../hooks/useChat';
 import useStatus from '../hooks/useStatus';
 import StatusPrivacyModal from './StatusPrivacyModal';
 
@@ -37,7 +45,8 @@ const FONTS = [
 ];
 
 const StatusComposer = ({ isOpen, onClose }) => {
-  const { postStatus } = useStatus();
+  const { contacts } = useChat();
+  const { postStatus, fetchStatuses } = useStatus();
 
   // Mode Selection: 'text' | 'camera' | 'gallery'
   const [mode, setMode] = useState('text');
@@ -63,15 +72,45 @@ const StatusComposer = ({ isOpen, onClose }) => {
   const recordedChunksRef = useRef([]);
   const [cameraError, setCameraError] = useState('');
 
+  // Per-Status Audience Privacy Override State
+  const [privacyMode, setPrivacyMode] = useState('contacts'); // 'contacts' | 'contacts_except' | 'only_share_with'
+  const [privacyExceptions, setPrivacyExceptions] = useState([]); // array of userIds
+  const [isAudienceSelectorOpen, setIsAudienceSelectorOpen] = useState(false);
+  const [isContactPickerOpen, setIsContactPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+
   // Discard & Feedback State
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [targetNextMode, setTargetNextMode] = useState(null);
-  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [postedSuccess, setPostedSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const galleryInputRef = useRef(null);
+
+  // Fetch user's saved default privacy settings on composer open
+  const fetchDefaultPrivacy = async () => {
+    try {
+      const res = await api.get('/statuses/privacy');
+      if (res.data?.success) {
+        setPrivacyMode(res.data.statusPrivacy?.mode || 'contacts');
+        const excIds = (res.data.statusPrivacy?.exceptions || []).map((u) => u._id || u);
+        setPrivacyExceptions(excIds);
+      }
+    } catch (err) {
+      console.error('Error fetching default status privacy:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchDefaultPrivacy();
+      setSaveAsDefault(false);
+      setErrorMessage('');
+    }
+  }, [isOpen]);
 
   // Start / Stop Camera Stream for Camera Mode
   const startCamera = async (modeSetting = facingMode) => {
@@ -249,6 +288,13 @@ const StatusComposer = ({ isOpen, onClose }) => {
     }
   };
 
+  // Contact Selection Toggles for Exclusion / Inclusion
+  const toggleExceptionUser = (userId) => {
+    setPrivacyExceptions((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
   // Submit Handler
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -271,12 +317,30 @@ const StatusComposer = ({ isOpen, onClose }) => {
       statusType = capturedBlob.type.startsWith('video/') ? 'video' : 'image';
     }
 
+    // Save as permanent default if checkbox is checked
+    if (saveAsDefault) {
+      try {
+        await api.post('/statuses/privacy', {
+          mode: privacyMode,
+          exceptions: privacyExceptions,
+        });
+      } catch (err) {
+        console.error('Error saving default status privacy:', err);
+      }
+    }
+
+    const statusPrivacyObj = {
+      mode: privacyMode,
+      exceptions: privacyExceptions,
+    };
+
     const res = await postStatus({
       type: statusType,
       content: content.trim(),
       file: fileToUpload,
       backgroundColor: gradient,
       font: font,
+      statusPrivacy: statusPrivacyObj,
     });
 
     setLoading(false);
@@ -292,6 +356,11 @@ const StatusComposer = ({ isOpen, onClose }) => {
     }
   };
 
+  const filteredContacts = (contacts || []).filter((c) => {
+    const contactName = c?.nickname || c?.name || c?.user?.name || c?.email || c?.user?.email || '';
+    return contactName.toLowerCase().includes((pickerSearch || '').toLowerCase());
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-2xl animate-fade-in">
       <div className="relative w-full max-w-lg h-[88vh] bg-slate-950 border border-slate-800/80 rounded-3xl overflow-hidden flex flex-col justify-between shadow-2xl">
@@ -301,7 +370,7 @@ const StatusComposer = ({ isOpen, onClose }) => {
           className="absolute inset-0 opacity-20 blur-3xl pointer-events-none transition-all duration-500"
         />
 
-        {/* Top Bar: Exit, 3-Tab Mode Switcher, & Privacy Selector */}
+        {/* Top Bar: Exit, 3-Tab Mode Switcher, & Full Settings Modal Trigger */}
         <div className="p-4 z-20 flex items-center justify-between bg-gradient-to-b from-slate-950/90 via-slate-950/60 to-transparent">
           <button
             onClick={handleRequestClose}
@@ -344,12 +413,12 @@ const StatusComposer = ({ isOpen, onClose }) => {
             </button>
           </div>
 
-          {/* Privacy Selector Button */}
+          {/* Settings Modal Button */}
           <button
             type="button"
-            onClick={() => setIsPrivacyModalOpen(true)}
+            onClick={() => setIsSettingsModalOpen(true)}
             className="p-2.5 rounded-full bg-slate-900/80 hover:bg-slate-800 text-brand-400 border border-slate-800 backdrop-blur-md transition-all"
-            title="Status Privacy Settings"
+            title="Full Status Privacy Settings"
           >
             <Shield className="w-4 h-4" />
           </button>
@@ -596,8 +665,35 @@ const StatusComposer = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* Action Footer: Send Post Button */}
-          <div className="flex items-center justify-end">
+          {/* Action Footer: WhatsApp-Style Audience Selector Pill + Send Post Button */}
+          <div className="flex items-center justify-between gap-3 pt-1">
+            {/* WhatsApp-Style Compact Audience Selector Pill */}
+            <button
+              type="button"
+              onClick={() => setIsAudienceSelectorOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-900/90 border border-slate-700/80 hover:border-brand-500/60 text-slate-200 hover:text-white backdrop-blur-md transition-all shadow-lg text-xs font-bold active:scale-95 group"
+              title="Choose who can see this status post"
+            >
+              <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center">
+                {privacyMode === 'contacts_except' ? (
+                  <UserX className="w-3.5 h-3.5" />
+                ) : privacyMode === 'only_share_with' ? (
+                  <UserCheck className="w-3.5 h-3.5" />
+                ) : (
+                  <Users className="w-3.5 h-3.5" />
+                )}
+              </div>
+              <span className="truncate max-w-[170px]">
+                {privacyMode === 'contacts_except'
+                  ? `My contacts except (${privacyExceptions.length})`
+                  : privacyMode === 'only_share_with'
+                  ? `Only share with (${privacyExceptions.length})`
+                  : 'My contacts'}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white transition-transform" />
+            </button>
+
+            {/* Final Post (✓ / Send) Button */}
             <button
               type="button"
               onClick={handleSubmit}
@@ -621,6 +717,202 @@ const StatusComposer = ({ isOpen, onClose }) => {
           </div>
         </div>
       </div>
+
+      {/* Quick Audience Selector Modal / Sheet */}
+      {isAudienceSelectorOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 animate-pop-in relative">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-brand-400" />
+                <h3 className="text-sm font-bold text-white">Status Audience</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAudienceSelectorOpen(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400">
+              Choose who can see this status update right before posting:
+            </p>
+
+            {/* Privacy Mode Options */}
+            <div className="space-y-2">
+              {[
+                {
+                  id: 'contacts',
+                  title: 'My contacts',
+                  desc: 'Share with all your saved contacts',
+                  icon: Users,
+                },
+                {
+                  id: 'contacts_except',
+                  title: 'My contacts, except...',
+                  desc: 'Hide from specific contacts',
+                  icon: UserX,
+                },
+                {
+                  id: 'only_share_with',
+                  title: 'Only share with...',
+                  desc: 'Share only with selected contacts',
+                  icon: UserCheck,
+                },
+              ].map((opt) => {
+                const isSelected = privacyMode === opt.id;
+                const Icon = opt.icon;
+
+                return (
+                  <div
+                    key={opt.id}
+                    onClick={() => {
+                      setPrivacyMode(opt.id);
+                      if (opt.id !== 'contacts') {
+                        setIsContactPickerOpen(true);
+                      }
+                    }}
+                    className={`p-3.5 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
+                      isSelected
+                        ? 'bg-brand-950/40 border-brand-500 text-white'
+                        : 'border-slate-800 hover:bg-slate-800/50 text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`p-2 rounded-xl ${
+                          isSelected ? 'bg-brand-600 text-white' : 'bg-slate-800 text-slate-400'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold">{opt.title}</h4>
+                        <p className="text-[10px] text-slate-400">{opt.desc}</p>
+                        {opt.id !== 'contacts' && isSelected && (
+                          <span className="inline-block mt-0.5 text-[10px] font-bold text-brand-400">
+                            {privacyExceptions.length} contacts selected (tap to edit)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                        isSelected ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-700'
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3 h-3" />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Optional "Save as default" Checkbox */}
+            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-300 hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={saveAsDefault}
+                  onChange={(e) => setSaveAsDefault(e.target.checked)}
+                  className="rounded border-slate-700 text-brand-600 focus:ring-brand-500 bg-slate-800"
+                />
+                <span>Save as default for future status posts</span>
+              </label>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsAudienceSelectorOpen(false)}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAudienceSelectorOpen(false)}
+                className="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-md shadow-brand-600/30"
+              >
+                Apply for this post
+              </button>
+            </div>
+          </div>
+
+          {/* Contact Picker Sub-Overlay */}
+          {isContactPickerOpen && (
+            <div className="absolute inset-0 z-50 bg-slate-900 flex flex-col p-4 animate-fade-in rounded-3xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h4 className="text-xs font-bold text-white">
+                  {privacyMode === 'contacts_except' ? 'Exclude Contacts' : 'Select Contacts to Share With'}
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setIsContactPickerOpen(false)}
+                  className="px-3 py-1 bg-brand-600 text-white rounded-xl text-xs font-bold"
+                >
+                  Done ({privacyExceptions.length})
+                </button>
+              </div>
+
+              <div className="py-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={pickerSearch}
+                    onChange={(e) => setPickerSearch(e.target.value)}
+                    placeholder="Search contacts..."
+                    className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-800 text-slate-100 placeholder-slate-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-1">
+                {filteredContacts.map((contact) => {
+                  const cId = contact._id || contact.user?._id || contact.id;
+                  const cName = contact.nickname || contact.name || contact.user?.name || 'Contact';
+                  const cAvatar = contact.avatarUrl || contact.user?.avatarUrl || '';
+                  const cSubtext = contact.chatwaveId || contact.email || contact.user?.email || '';
+                  const isSelected = privacyExceptions.includes(cId);
+
+                  return (
+                    <div
+                      key={cId}
+                      onClick={() => toggleExceptionUser(cId)}
+                      className={`p-2.5 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
+                        isSelected
+                          ? 'bg-brand-950/40 border-brand-500 text-white'
+                          : 'border-slate-800 hover:bg-slate-800/40 text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <img src={cAvatar} alt={cName} className="w-8 h-8 rounded-full object-cover" />
+                        <div>
+                          <h5 className="text-xs font-bold">{cName}</h5>
+                          <p className="text-[10px] text-slate-400">{cSubtext}</p>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`w-4 h-4 rounded border flex items-center justify-center ${
+                          isSelected ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-700'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3 h-3" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Discard Confirmation Overlay */}
       {showDiscardConfirm && (
@@ -653,8 +945,8 @@ const StatusComposer = ({ isOpen, onClose }) => {
         </div>
       )}
 
-      {/* Privacy Settings Modal */}
-      <StatusPrivacyModal isOpen={isPrivacyModalOpen} onClose={() => setIsPrivacyModalOpen(false)} />
+      {/* Settings Privacy Modal */}
+      <StatusPrivacyModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
     </div>
   );
 };
