@@ -22,10 +22,10 @@ const NavRail = ({ activeTab, setActiveTab, onOpenSettings, onOpenCommunities, o
 
   const navItems = [
     { id: 'chats', label: t('chats'), icon: MessageSquare },
-    { id: 'channels', label: t('channels'), icon: Radio, isChannel: true },
-    { id: 'communities', label: t('communities'), icon: Building2, isCommunity: true },
     { id: 'status', label: t('status'), icon: Radar, isStatus: true },
     { id: 'calls', label: t('calls'), icon: Phone },
+    { id: 'communities', label: t('communities'), icon: Building2, isCommunity: true },
+    { id: 'channels', label: t('channels'), icon: Radio, isChannel: true },
   ];
 
   return (
