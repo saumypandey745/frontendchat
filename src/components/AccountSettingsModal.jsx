@@ -27,7 +27,7 @@ import useAuth from '../hooks/useAuth';
 import useChat from '../hooks/useChat';
 import StatusPrivacyModal from './StatusPrivacyModal';
 
-const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
+const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile, onOpenQrModal }) => {
   const { t, i18n } = useTranslation();
   const { user, updateSettings } = useAuth();
   const { contacts, groups } = useChat();
@@ -207,7 +207,11 @@ const AccountSettingsModal = ({ isOpen, onClose, onOpenEditProfile }) => {
                 type="button"
                 onClick={() => {
                   onClose();
-                  if (onOpenEditProfile) onOpenEditProfile();
+                  if (onOpenQrModal) {
+                    onOpenQrModal('my_code');
+                  } else if (onOpenEditProfile) {
+                    onOpenEditProfile();
+                  }
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-2xl text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-50/60 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-900 hover:bg-brand-100 transition-all"
               >

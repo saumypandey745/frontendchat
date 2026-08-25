@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, Camera, Loader2, User as UserIcon, Copy, Check, Hash, QrCode } from 'lucide-react';
+import { X, Camera, Loader2, User as UserIcon, Copy, Check, Hash, QrCode, ExternalLink } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import useAuth from '../hooks/useAuth';
 
-const EditProfileModal = ({ isOpen, onClose }) => {
+const EditProfileModal = ({ isOpen, onClose, onOpenQrModal }) => {
   const { user, updateProfile } = useAuth();
 
   const [name, setName] = useState(user?.name || '');
@@ -15,6 +16,12 @@ const EditProfileModal = ({ isOpen, onClose }) => {
   const [showQr, setShowQr] = useState(false);
 
   if (!isOpen) return null;
+
+  const appOrigin =
+    typeof window !== 'undefined' && window.location.origin && window.location.origin !== 'null'
+      ? window.location.origin
+      : (import.meta.env.VITE_APP_URL || 'https://frontendchat-pied.vercel.app');
+  const qrUrl = user?.chatwaveId ? `${appOrigin}/add/${user.chatwaveId}` : `${appOrigin}/add/0000000000`;
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -148,17 +155,32 @@ const EditProfileModal = ({ isOpen, onClose }) => {
             {showQr && user?.chatwaveId && (
               <div className="pt-3 border-t border-brand-200/50 dark:border-brand-900/40 text-center animate-fade-in space-y-2">
                 <div className="p-3 bg-white rounded-2xl inline-block shadow-md">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
-                      user.chatwaveId
-                    )}`}
-                    alt="ChatWave ID QR Code"
-                    className="w-32 h-32 mx-auto"
+                  <QRCodeSVG
+                    value={qrUrl}
+                    size={140}
+                    level="H"
+                    marginSize={2}
+                    fgColor="#0f172a"
+                    bgColor="#ffffff"
+                    className="mx-auto rounded-lg"
                   />
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400">
                   Scan with ChatWave to add as contact
                 </p>
+                {onOpenQrModal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenQrModal('my_code');
+                    }}
+                    className="text-[11px] font-bold text-brand-600 dark:text-brand-400 hover:underline flex items-center justify-center gap-1 mx-auto pt-1"
+                  >
+                    <span>Open Full QR Card & Scanner</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             )}
           </div>

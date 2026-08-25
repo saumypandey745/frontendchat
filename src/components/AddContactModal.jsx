@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, X, Hash, Tag, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { UserPlus, X, Hash, Tag, Check, AlertCircle, Loader2, QrCode } from 'lucide-react';
 import api from '../lib/axios';
 import useChat from '../hooks/useChat';
 
-const AddContactModal = ({ isOpen, onClose, initialChatwaveId = '', initialNickname = '' }) => {
+const AddContactModal = ({
+  isOpen,
+  onClose,
+  initialChatwaveId = '',
+  initialNickname = '',
+  onOpenQrScanner,
+}) => {
   const { fetchContacts, selectContact } = useChat();
 
   const [chatwaveId, setChatwaveId] = useState(initialChatwaveId);
@@ -79,6 +85,23 @@ const AddContactModal = ({ isOpen, onClose, initialChatwaveId = '', initialNickn
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Option to Scan QR Code instead */}
+        {onOpenQrScanner && (
+          <div className="px-5 pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenQrScanner();
+              }}
+              className="w-full py-2.5 px-4 bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-900/60 hover:bg-brand-100 dark:hover:bg-brand-900/40 text-brand-600 dark:text-brand-400 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm"
+            >
+              <QrCode className="w-4 h-4 text-brand-500" />
+              <span>Scan Contact QR Code Instead</span>
+            </button>
+          </div>
+        )}
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">

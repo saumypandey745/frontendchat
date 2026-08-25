@@ -11,6 +11,7 @@ import {
   Lock,
   Unlock,
   Megaphone,
+  QrCode,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import useChat from '../hooks/useChat';
@@ -20,6 +21,7 @@ import CreateGroupModal from './CreateGroupModal';
 import ArchivedChatsModal from './ArchivedChatsModal';
 import ChatLockModal from './ChatLockModal';
 import AddContactModal from './AddContactModal';
+import QrCodeModal from './QrCodeModal';
 import Skeleton from './ui/Skeleton';
 import Badge from './ui/Badge';
 import EmptyState from './EmptyState';
@@ -46,6 +48,8 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
   const [isSearching, setIsSearching] = useState(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [qrModalTab, setQrModalTab] = useState('my_code');
   const [isArchivedModalOpen, setIsArchivedModalOpen] = useState(false);
   const [isLockedFolderUnlocked, setIsLockedFolderUnlocked] = useState(false);
   const [showUnlockFolderModal, setShowUnlockFolderModal] = useState(false);
@@ -161,6 +165,16 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
               title={t('broadcast_lists')}
             >
               <Megaphone className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                setQrModalTab('scan');
+                setIsQrModalOpen(true);
+              }}
+              className="min-h-[44px] min-w-[44px] p-2.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-xl hover:bg-purple-500/20 transition-colors flex items-center justify-center"
+              title="Scan QR Code to Add Contact"
+            >
+              <QrCode className="w-4 h-4" />
             </button>
             <button
               onClick={() => setIsAddContactOpen(true)}
@@ -289,7 +303,20 @@ const ChatList = ({ onSelectMobile, activeTab, setActiveTab, onOpenCommandPalett
       </div>
 
       <CreateGroupModal isOpen={isGroupModalOpen} onClose={() => setIsGroupModalOpen(false)} />
-      <AddContactModal isOpen={isAddContactOpen} onClose={() => setIsAddContactOpen(false)} />
+      <AddContactModal
+        isOpen={isAddContactOpen}
+        onClose={() => setIsAddContactOpen(false)}
+        onOpenQrScanner={() => {
+          setQrModalTab('scan');
+          setIsQrModalOpen(true);
+        }}
+      />
+      <QrCodeModal
+        isOpen={isQrModalOpen}
+        initialTab={qrModalTab}
+        onClose={() => setIsQrModalOpen(false)}
+        onOpenAddContactModal={() => setIsAddContactOpen(true)}
+      />
       <ArchivedChatsModal isOpen={isArchivedModalOpen} onClose={() => setIsArchivedModalOpen(false)} />
       {showUnlockFolderModal && (
         <ChatLockModal

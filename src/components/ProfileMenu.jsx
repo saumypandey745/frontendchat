@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Settings, Sun, Moon, Monitor, LogOut, Star, Laptop } from 'lucide-react';
+import { User, Settings, Sun, Moon, Monitor, LogOut, Star, Laptop, QrCode } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import useAuth from '../hooks/useAuth';
 import useTheme from '../hooks/useTheme';
@@ -8,6 +8,7 @@ import EditProfileModal from './EditProfileModal';
 import AccountSettingsModal from './AccountSettingsModal';
 import StarredMessagesModal from './StarredMessagesModal';
 import LinkedDevicesModal from './LinkedDevicesModal';
+import QrCodeModal from './QrCodeModal';
 
 const FALLBACK_AVATAR = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='20' fill='%230d9488'/%3E%3Ccircle cx='20' cy='16' r='7' fill='white' opacity='0.85'/%3E%3Cellipse cx='20' cy='36' rx='12' ry='10' fill='white' opacity='0.85'/%3E%3C/svg%3E`;
 
@@ -22,6 +23,8 @@ const ProfileMenu = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isStarredModalOpen, setIsStarredModalOpen] = useState(false);
   const [isDevicesModalOpen, setIsDevicesModalOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [qrModalTab, setQrModalTab] = useState('my_code');
 
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
@@ -226,10 +229,29 @@ const ProfileMenu = () => {
       {dropdownMenu}
 
       {/* Modals */}
-      <EditProfileModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} />
-      <AccountSettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
+      <EditProfileModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onOpenQrModal={(tab) => {
+          setQrModalTab(tab || 'my_code');
+          setIsQrModalOpen(true);
+        }}
+      />
+      <AccountSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onOpenQrModal={(tab) => {
+          setQrModalTab(tab || 'my_code');
+          setIsQrModalOpen(true);
+        }}
+      />
       <StarredMessagesModal isOpen={isStarredModalOpen} onClose={() => setIsStarredModalOpen(false)} />
       <LinkedDevicesModal isOpen={isDevicesModalOpen} onClose={() => setIsDevicesModalOpen(false)} />
+      <QrCodeModal
+        isOpen={isQrModalOpen}
+        initialTab={qrModalTab}
+        onClose={() => setIsQrModalOpen(false)}
+      />
     </>
   );
 };
