@@ -11,6 +11,8 @@ import {
   MapPin,
   User,
   FileText,
+  FileSpreadsheet,
+  Archive,
   Phone,
   PhoneMissed,
   Smile,
@@ -23,6 +25,7 @@ import {
   CheckSquare,
   Square,
   CheckCircle2,
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import useAuth from '../hooks/useAuth';
@@ -33,6 +36,54 @@ import ReactionPicker from './ReactionPicker';
 import Tooltip from './ui/Tooltip';
 import MessageInfoModal from './MessageInfoModal';
 import ViewOnceViewerModal from './ViewOnceViewerModal';
+
+const getFileTypeConfig = (fileName = '') => {
+  const ext = fileName.split('.').pop().toLowerCase();
+
+  if (['xlsx', 'xls', 'csv'].includes(ext)) {
+    return {
+      icon: FileSpreadsheet,
+      badgeStyle: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400',
+      iconColor: 'text-emerald-400',
+      buttonStyle: 'bg-emerald-600 hover:bg-emerald-500 text-white',
+      label: 'SPREADSHEET',
+    };
+  }
+  if (['pdf'].includes(ext)) {
+    return {
+      icon: FileText,
+      badgeStyle: 'bg-red-500/15 border-red-500/30 text-red-400',
+      iconColor: 'text-red-400',
+      buttonStyle: 'bg-red-600 hover:bg-red-500 text-white',
+      label: 'PDF DOCUMENT',
+    };
+  }
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+    return {
+      icon: Archive,
+      badgeStyle: 'bg-amber-500/15 border-amber-500/30 text-amber-400',
+      iconColor: 'text-amber-400',
+      buttonStyle: 'bg-amber-600 hover:bg-amber-500 text-white',
+      label: 'ARCHIVE',
+    };
+  }
+  if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) {
+    return {
+      icon: FileText,
+      badgeStyle: 'bg-blue-500/15 border-blue-500/30 text-blue-400',
+      iconColor: 'text-blue-400',
+      buttonStyle: 'bg-blue-600 hover:bg-blue-500 text-white',
+      label: 'DOCUMENT',
+    };
+  }
+  return {
+    icon: FileText,
+    badgeStyle: 'bg-brand-500/15 border-brand-500/30 text-brand-400',
+    iconColor: 'text-brand-400',
+    buttonStyle: 'bg-brand-600 hover:bg-brand-500 text-white',
+    label: 'FILE',
+  };
+};
 
 const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
   const { user } = useAuth();
@@ -236,17 +287,17 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
           </div>
         )}
 
-        {/* Message Bubble Card */}
+        {/* Message Bubble Card with Dual-Shade Gradient & Subtle Glow */}
         <div
-          className={`p-3.5 text-sm transition-all shadow-sm ${
+          className={`p-3.5 text-sm transition-all shadow-md ${
             isSender
-              ? 'bg-gradient-to-tr from-brand-600 to-brand-500 text-white rounded-3xl rounded-br-md shadow-brand-500/10'
-              : 'bg-white dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-slate-700/60 rounded-3xl rounded-bl-md shadow-glass-sm'
+              ? 'bg-gradient-to-br from-brand-600 via-brand-600 to-teal-600 text-white rounded-3xl rounded-br-xs shadow-brand-950/40'
+              : 'bg-white/95 dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-slate-800/80 shadow-slate-950/20 rounded-3xl rounded-bl-xs backdrop-blur-sm'
           }`}
         >
           {/* Forwarded Tag */}
           {message.forwarded && !message.deletedForEveryone && (
-            <p className="text-[10px] italic font-semibold opacity-75 mb-1.5 flex items-center gap-1">
+            <p className="text-[10px] italic font-semibold opacity-80 mb-1.5 flex items-center gap-1">
               <Share2 className="w-3 h-3" />
               {message.forwardCount > 5 ? 'Forwarded many times' : 'Forwarded'}
             </p>
@@ -257,8 +308,8 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
             <div
               className={`p-2 rounded-2xl mb-2 text-xs border-l-4 ${
                 isSender
-                  ? 'bg-brand-700/50 border-white/80 text-brand-100'
-                  : 'bg-slate-100 dark:bg-slate-700/50 border-brand-500 text-slate-700 dark:text-slate-300'
+                  ? 'bg-brand-800/40 border-white/80 text-brand-100'
+                  : 'bg-slate-100 dark:bg-slate-800/60 border-brand-500 text-slate-700 dark:text-slate-300'
               }`}
             >
               <p className="font-bold">{message.replyTo.senderId?.name || 'User'}</p>
@@ -354,37 +405,54 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
               </div>
             </div>
           ) : message.type === 'contact' && message.contactData ? (
-            <div className="flex items-center gap-3 p-2 bg-black/10 dark:bg-black/30 rounded-2xl">
-              <User className="w-8 h-8 p-2 bg-brand-500 text-white rounded-full" />
+            <div className="flex items-center gap-3 p-2.5 bg-black/10 dark:bg-black/30 rounded-2xl">
+              <User className="w-8 h-8 p-2 bg-brand-500 text-white rounded-full flex-shrink-0 shadow" />
               <div className="text-xs">
                 <p className="font-bold">{message.contactData.name}</p>
                 <p className="opacity-80">{message.contactData.phone || message.contactData.email}</p>
               </div>
             </div>
           ) : message.type === 'document' && message.fileData ? (
-            <div className="flex items-center justify-between gap-4 p-2.5 bg-black/10 dark:bg-black/30 rounded-2xl">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <FileText className="w-6 h-6 text-brand-400 flex-shrink-0" />
-                <div className="truncate text-xs">
-                  <p className="font-bold truncate">{message.fileData.name}</p>
-                  <p className="opacity-75">{Math.round((message.fileData.size || 0) / 1024)} KB</p>
+            (() => {
+              const fileConfig = getFileTypeConfig(message.fileData.name);
+              const FileIcon = fileConfig.icon;
+
+              return (
+                <div className="flex items-center justify-between gap-4 p-3 bg-black/15 dark:bg-black/40 rounded-2xl border border-white/10 shadow-sm">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`p-2.5 rounded-xl border ${fileConfig.badgeStyle} flex-shrink-0 shadow-sm`}>
+                      <FileIcon className="w-5 h-5" />
+                    </div>
+                    <div className="truncate text-xs">
+                      <p className="font-bold truncate text-slate-100">{message.fileData.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-white/10 opacity-90">
+                          {fileConfig.label}
+                        </span>
+                        <span className="opacity-75 text-[10px] font-mono">
+                          {Math.round((message.fileData.size || 0) / 1024)} KB
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <a
+                    href={message.fileData.url}
+                    download
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 text-xs font-extrabold bg-white hover:bg-slate-100 text-slate-900 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1 flex-shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-700" />
+                    <span>Download</span>
+                  </a>
                 </div>
-              </div>
-              <a
-                href={message.fileData.url}
-                download
-                target="_blank"
-                rel="noreferrer"
-                className="px-2.5 py-1 text-[10px] font-bold bg-white text-brand-600 rounded-xl shadow hover:bg-slate-50 transition-colors"
-              >
-                Download
-              </a>
-            </div>
+              );
+            })()
           ) : message.type === 'poll' && message.poll ? (
             <div className="space-y-3 min-w-[240px] max-w-sm">
               <div className="flex items-center justify-between gap-2 border-b border-black/10 dark:border-white/10 pb-2">
                 <div className="flex items-center gap-1.5 font-bold text-xs">
-                  <BarChart2 className="w-4 h-4 text-brand-400" />
+                  <BarChart2 className="w-4 h-4 text-brand-300" />
                   <span className="truncate">{message.poll.question}</span>
                 </div>
                 {message.poll.endedAt ? (
@@ -405,6 +473,7 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
                     (acc, opt) => acc + (opt.votes?.length || 0),
                     0
                   );
+                  const maxVotes = Math.max(...message.poll.options.map((o) => o.votes?.length || 0), 0);
 
                   return message.poll.options.map((opt, idx) => {
                     const votesCount = opt.votes?.length || 0;
@@ -412,6 +481,7 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
                     const hasVoted = opt.votes?.some(
                       (v) => (v._id || v).toString() === user?._id?.toString()
                     );
+                    const isLeading = votesCount > 0 && votesCount === maxVotes;
 
                     return (
                       <button
@@ -420,13 +490,17 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
                         onClick={() => votePoll(message._id, [idx])}
                         className={`w-full relative overflow-hidden p-2.5 rounded-2xl border text-left transition-all ${
                           hasVoted
-                            ? 'border-brand-500 bg-brand-500/10 font-bold'
-                            : 'border-slate-300/40 dark:border-slate-700/40 bg-black/5 dark:bg-black/20 hover:bg-black/10'
+                            ? 'border-brand-400 bg-brand-500/20 font-bold shadow-sm'
+                            : isLeading
+                            ? 'border-teal-500/40 bg-teal-500/10'
+                            : 'border-slate-300/40 dark:border-slate-700/40 bg-black/10 dark:bg-black/20 hover:bg-black/20'
                         } ${message.poll.endedAt ? 'cursor-not-allowed opacity-90' : ''}`}
                       >
-                        {/* Progress Fill Bar */}
+                        {/* Progress Fill Bar with Smooth Transition */}
                         <div
-                          className="absolute left-0 top-0 bottom-0 bg-brand-500/20 transition-all duration-300 rounded-2xl"
+                          className={`absolute left-0 top-0 bottom-0 transition-all duration-700 ease-out rounded-2xl ${
+                            isLeading ? 'bg-teal-500/30' : 'bg-brand-500/20'
+                          }`}
                           style={{ width: `${percentage}%` }}
                         />
 
@@ -434,12 +508,12 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
                           <div className="flex items-center gap-2 min-w-0">
                             {message.poll.allowMultiple ? (
                               hasVoted ? (
-                                <CheckSquare className="w-4 h-4 text-brand-500 flex-shrink-0" />
+                                <CheckSquare className="w-4 h-4 text-brand-400 flex-shrink-0" />
                               ) : (
                                 <Square className="w-4 h-4 text-slate-400 flex-shrink-0" />
                               )
                             ) : hasVoted ? (
-                              <CheckCircle2 className="w-4 h-4 text-brand-500 flex-shrink-0" />
+                              <CheckCircle2 className="w-4 h-4 text-brand-400 flex-shrink-0" />
                             ) : (
                               <div className="w-4 h-4 rounded-full border border-slate-400 flex-shrink-0" />
                             )}
@@ -485,7 +559,7 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
           ) : (
             <>
               {message.imageUrl && !message.deletedForEveryone && (
-                <div className={message.isSticker || message.type === 'sticker' ? 'my-1 bg-transparent border-0 shadow-none' : 'mb-2 overflow-hidden rounded-2xl relative'}>
+                <div className={message.isSticker || message.type === 'sticker' ? 'my-1 bg-transparent border-0 shadow-none' : 'mb-2 overflow-hidden rounded-2xl relative shadow-sm'}>
                   <img
                     src={message.imageUrl}
                     alt={message.isSticker || message.type === 'sticker' ? 'Sticker' : 'Attachment'}
@@ -528,7 +602,7 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
           {/* Footer Metadata */}
           <div
             className={`flex items-center justify-end gap-1.5 mt-1 text-[10px] ${
-              isSender ? 'text-brand-200' : 'text-slate-400'
+              isSender ? 'text-brand-100' : 'text-slate-400'
             }`}
           >
             {isStarred && <Star className="w-3 h-3 text-amber-400 fill-amber-400" />}

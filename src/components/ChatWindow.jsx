@@ -396,14 +396,14 @@ const ChatWindow = ({ onBackMobile }) => {
   return (
     <div
       style={getWallpaperStyle()}
-      className="flex-1 flex flex-col h-full bg-slate-50/60 dark:bg-slate-950/60 relative overflow-hidden"
+      className="flex-1 flex flex-col h-full chat-ambient-bg relative overflow-hidden border-l border-slate-200/80 dark:border-slate-800/80"
     >
       {/* Background Contrast Overlay for Readability */}
       {activeWallpaper && (
         <div className="absolute inset-0 bg-slate-950/20 backdrop-brightness-95 pointer-events-none z-0" />
       )}
       {/* Header Bar */}
-      <div className="px-5 py-3 glass-panel border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between z-10">
+      <div className="px-5 py-3 glass-panel border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between z-10 shadow-sm">
         <div className="flex items-center gap-3">
           <button
             onClick={onBackMobile}
