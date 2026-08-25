@@ -5,7 +5,7 @@ const EMOJI_LIST = [
   '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
   '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
   '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩',
-  '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
+  '🥳', '😏', '<ctrl42>', '😔', '😟', '😕', '🙁', '☹️', '😣',
   '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬',
   '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗',
   '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯',
@@ -16,41 +16,55 @@ const EMOJI_LIST = [
   '💞', '💓', '💗', '💖', '💘', '💝', '🔥', '✨', '🌟', '💥',
 ];
 
-// Bundled sticker pack SVG collection (WhatsApp transparent stickers)
+// Local transparent sticker assets (100% reliable)
 const STICKER_PACK = [
-  { id: 'stk_1', title: 'Happy Cat', url: 'https://cdn-icons-png.flaticon.com/512/616/616430.png' },
-  { id: 'stk_2', title: 'Love Heart', url: 'https://cdn-icons-png.flaticon.com/512/2107/2107845.png' },
-  { id: 'stk_3', title: 'Cool Dog', url: 'https://cdn-icons-png.flaticon.com/512/616/616408.png' },
-  { id: 'stk_4', title: 'Party Time', url: 'https://cdn-icons-png.flaticon.com/512/4213/4213641.png' },
-  { id: 'stk_5', title: 'Fire Flame', url: 'https://cdn-icons-png.flaticon.com/512/785/785116.png' },
-  { id: 'stk_6', title: 'Star Sparkle', url: 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png' },
-  { id: 'stk_7', title: 'Thumbs Up', url: 'https://cdn-icons-png.flaticon.com/512/889/889221.png' },
-  { id: 'stk_8', title: 'Coffee Cup', url: 'https://cdn-icons-png.flaticon.com/512/2935/2935413.png' },
-  { id: 'stk_9', title: 'Rocket Ship', url: 'https://cdn-icons-png.flaticon.com/512/1356/1356479.png' },
-  { id: 'stk_10', title: 'Mind Blown', url: 'https://cdn-icons-png.flaticon.com/512/924/924989.png' },
-  { id: 'stk_11', title: 'Laughing Emoji', url: 'https://cdn-icons-png.flaticon.com/512/742/742751.png' },
-  { id: 'stk_12', title: 'Panda Hug', url: 'https://cdn-icons-png.flaticon.com/512/616/616554.png' },
+  { id: 'stk_cat', title: 'Happy Cat', url: '/stickers/cat.svg' },
+  { id: 'stk_heart', title: 'Love Heart', url: '/stickers/heart.svg' },
+  { id: 'stk_fire', title: 'Fire Flame', url: '/stickers/fire.svg' },
+  { id: 'stk_star', title: 'Golden Star', url: '/stickers/star.svg' },
+  { id: 'stk_party', title: 'Party Time', url: '/stickers/party.svg' },
+  { id: 'stk_thumbsup', title: 'Thumbs Up', url: '/stickers/thumbsup.svg' },
+];
+
+// Fallback GIF collection if API key is not specified
+const FALLBACK_GIFS = [
+  { id: 'gif_1', title: 'Happy Dance', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3hveGJucWx2ZDVwYmptNmpnN2kxb3hqcTR4ZzUxeGptYTFydnEwdCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/blSTtZehjAZ8I/giphy.gif', previewUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3hveGJucWx2ZDVwYmptNmpnN2kxb3hqcTR4ZzUxeGptYTFydnEwdCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/blSTtZehjAZ8I/giphy.gif' },
+  { id: 'gif_2', title: 'Thumbs Up', url: 'https://media.giphy.com/media/111ebonMs9234s/giphy.gif', previewUrl: 'https://media.giphy.com/media/111ebonMs9234s/giphy.gif' },
+  { id: 'gif_3', title: 'Mind Blown', url: 'https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif', previewUrl: 'https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif' },
+  { id: 'gif_4', title: 'Laughing Cat', url: 'https://media.giphy.com/media/BzytuYY0VWJgzxP1jp/giphy.gif', previewUrl: 'https://media.giphy.com/media/BzytuYY0VWJgzxP1jp/giphy.gif' },
+  { id: 'gif_5', title: 'Celebration', url: 'https://media.giphy.com/media/g9582DNuQppxC/giphy.gif', previewUrl: 'https://media.giphy.com/media/g9582DNuQppxC/giphy.gif' },
+  { id: 'gif_6', title: 'Cool Shades', url: 'https://media.giphy.com/media/3oKIPnAiaMCws8nOsE/giphy.gif', previewUrl: 'https://media.giphy.com/media/3oKIPnAiaMCws8nOsE/giphy.gif' }
 ];
 
 const StickerGifPicker = ({ isOpen, onClose, onSelectEmoji, onSendSticker, onSendGif }) => {
   const [activeTab, setActiveTab] = useState('emoji'); // 'emoji' | 'stickers' | 'gifs'
   const [emojiSearch, setEmojiSearch] = useState('');
   const [gifQuery, setGifQuery] = useState('');
-  const [gifs, setGifs] = useState([]);
+  const [gifs, setGifs] = useState(FALLBACK_GIFS);
   const [loadingGifs, setLoadingGifs] = useState(false);
 
-  // Fetch Trending or Searched GIFs from GIPHY API
+  // Fetch Trending or Searched GIFs from GIPHY API with fallback
   const fetchGifs = async (query = '') => {
+    const apiKey = import.meta.env.VITE_GIPHY_API_KEY;
+    if (!apiKey) {
+      if (query.trim()) {
+        const filtered = FALLBACK_GIFS.filter((g) => g.title.toLowerCase().includes(query.toLowerCase()));
+        setGifs(filtered);
+      } else {
+        setGifs(FALLBACK_GIFS);
+      }
+      return;
+    }
+
     setLoadingGifs(true);
     try {
-      const apiKey = import.meta.env.VITE_GIPHY_API_KEY || 'dc6zaTOxFJmzC';
       const endpoint = query.trim()
         ? `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(query)}&limit=20&rating=g`
         : `https://api.giphy.com/v1/gifs/trending?api_key=${apiKey}&limit=20&rating=g`;
 
       const res = await fetch(endpoint);
       const data = await res.json();
-      if (data && data.data) {
+      if (data && data.data && data.data.length > 0) {
         const formatted = data.data.map((item) => ({
           id: item.id,
           title: item.title,
@@ -58,17 +72,20 @@ const StickerGifPicker = ({ isOpen, onClose, onSelectEmoji, onSendSticker, onSen
           previewUrl: item.images?.fixed_height_small?.url || item.images?.fixed_height?.url,
         }));
         setGifs(formatted);
+      } else {
+        setGifs(FALLBACK_GIFS);
       }
     } catch (err) {
       console.error('Failed to fetch GIFs:', err);
+      setGifs(FALLBACK_GIFS);
     } finally {
       setLoadingGifs(false);
     }
   };
 
   useEffect(() => {
-    if (activeTab === 'gifs' && gifs.length === 0) {
-      fetchGifs();
+    if (activeTab === 'gifs') {
+      fetchGifs(gifQuery);
     }
   }, [activeTab]);
 
@@ -171,7 +188,7 @@ const StickerGifPicker = ({ isOpen, onClose, onSelectEmoji, onSendSticker, onSen
                   }}
                   className="p-2 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-800 transition-all hover:scale-105 group"
                 >
-                  <img src={stk.url} alt={stk.title} className="w-16 h-16 object-contain mx-auto group-hover:scale-110 transition-transform" />
+                  <img src={stk.url} alt={stk.title} className="w-14 h-14 object-contain mx-auto group-hover:scale-110 transition-transform" />
                   <span className="text-[10px] text-slate-500 font-semibold block text-center truncate mt-1">
                     {stk.title}
                   </span>
@@ -194,7 +211,7 @@ const StickerGifPicker = ({ isOpen, onClose, onSelectEmoji, onSendSticker, onSen
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
-                placeholder="Search GIFs via GIPHY..."
+                placeholder="Search GIFs..."
                 value={gifQuery}
                 onChange={(e) => setGifQuery(e.target.value)}
                 className="w-full pl-8 pr-12 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-brand-500"

@@ -173,7 +173,7 @@ export const ChatProvider = ({ children }) => {
   }, [activeChatId, hasMore, loadingMessages, page, isGroupActive, fetchMessages]);
 
   // Send Message
-  const sendMessage = async ({ text, file, type, locationData, contactData, pollData, mentions, isViewOnce }) => {
+  const sendMessage = async ({ text, file, type, locationData, contactData, pollData, imageUrl, isSticker, isGif, mentions, isViewOnce }) => {
     if (!activeChatId) return;
 
     try {
@@ -181,6 +181,9 @@ export const ChatProvider = ({ children }) => {
       if (text) formData.append('text', text);
       if (file) formData.append('media', file);
       if (type) formData.append('type', type);
+      if (imageUrl) formData.append('imageUrl', imageUrl);
+      if (isSticker) formData.append('isSticker', 'true');
+      if (isGif) formData.append('isGif', 'true');
       formData.append('isGroup', isGroupActive);
 
       if (replyingToMessage) {

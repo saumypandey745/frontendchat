@@ -289,10 +289,12 @@ const MessageBubble = ({ message, isGrouped = false, onOpenForwardModal }) => {
 
         {/* Message Bubble Card with Dual-Shade Gradient & Subtle Glow */}
         <div
-          className={`p-3.5 text-sm transition-all shadow-md ${
-            isSender
-              ? 'bg-gradient-to-br from-brand-600 via-brand-600 to-teal-600 text-white rounded-3xl rounded-br-xs shadow-brand-950/40'
-              : 'bg-white/95 dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-slate-800/80 shadow-slate-950/20 rounded-3xl rounded-bl-xs backdrop-blur-sm'
+          className={`p-3.5 text-sm transition-all ${
+            message.isSticker || message.type === 'sticker'
+              ? 'bg-transparent border-0 shadow-none p-1'
+              : isSender
+              ? 'bg-gradient-to-br from-brand-600 via-brand-600 to-teal-600 text-white rounded-3xl rounded-br-xs shadow-md shadow-brand-950/40'
+              : 'bg-white/95 dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-slate-800/80 shadow-md shadow-slate-950/20 rounded-3xl rounded-bl-xs backdrop-blur-sm'
           }`}
         >
           {/* Forwarded Tag */}

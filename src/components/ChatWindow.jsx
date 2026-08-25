@@ -1022,8 +1022,8 @@ const ChatWindow = ({ onBackMobile }) => {
         isOpen={showEmojiPicker}
         onClose={() => setShowEmojiPicker(false)}
         onSelectEmoji={(emoji) => setText((prev) => prev + emoji)}
-        onSendSticker={(stickerUrl) => sendMessage({ type: 'image', imageUrl: stickerUrl, isSticker: true })}
-        onSendGif={(gifUrl) => sendMessage({ type: 'image', imageUrl: gifUrl, isGif: true })}
+        onSendSticker={(stickerUrl) => sendMessage({ type: 'sticker', imageUrl: stickerUrl, isSticker: true, text: '🎨 Sticker' })}
+        onSendGif={(gifUrl) => sendMessage({ type: 'gif', imageUrl: gifUrl, isGif: true, text: '👾 GIF' })}
       />
 
       {/* Modals */}
