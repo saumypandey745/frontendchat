@@ -128,6 +128,7 @@ const ChatWindow = ({ onBackMobile }) => {
       await sendMessage({
         type: 'poll',
         pollData: JSON.stringify(pollData),
+        text: `📊 Poll: ${pollData.question}`,
       });
     } catch (err) {
       console.error('Poll creation error:', err);

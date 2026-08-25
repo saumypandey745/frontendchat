@@ -173,7 +173,7 @@ export const ChatProvider = ({ children }) => {
   }, [activeChatId, hasMore, loadingMessages, page, isGroupActive, fetchMessages]);
 
   // Send Message
-  const sendMessage = async ({ text, file, type, locationData, contactData, mentions, isViewOnce }) => {
+  const sendMessage = async ({ text, file, type, locationData, contactData, pollData, mentions, isViewOnce }) => {
     if (!activeChatId) return;
 
     try {
@@ -194,6 +194,9 @@ export const ChatProvider = ({ children }) => {
       }
       if (contactData) {
         formData.append('contactData', JSON.stringify(contactData));
+      }
+      if (pollData) {
+        formData.append('pollData', typeof pollData === 'object' ? JSON.stringify(pollData) : pollData);
       }
       if (isViewOnce) {
         formData.append('isViewOnce', 'true');
